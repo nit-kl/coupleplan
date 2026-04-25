@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>CouplePlan Web</title>
+  <style>
+    :root {
+      --cream: #f7f3e9;
+      --coral: #f3a08f;
+      --rose: #de7c96;
+      --ink: #5a5164;
+      --ink-soft: #8f869d;
+      --line: #e8dfce;
+      --card-shadow: 0 8px 24px rgba(96, 86, 113, 0.1);
+      --radius-xl: 24px;
+      --radius-lg: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
+      background-color: var(--cream);
+      background-image: radial-gradient(rgba(90, 81, 100, 0.08) 1px, transparent 1px);
+      background-size: 14px 14px;
+      color: var(--ink);
+      padding: 1rem;
+    }
+
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    .screen { display: none; animation: fadeIn 0.3s ease; }
+    .screen.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .logo-pill {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #8468b4;
+      background: #efe8fb;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid #e1d6f6;
+    }
+
+    .btn-back {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .hero-title {
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      margin: 0 0 0.4rem;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+
+    .hero-lead {
+      margin: 0 0 1rem;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--card-shadow);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .stepper {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .stepper span {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: rgba(61, 53, 69, 0.12);
+      color: var(--ink-soft);
+    }
+
+    .stepper span.on {
+      background: linear-gradient(145deg, #f4ab93, #de8ea5);
+      color: #fff;
+    }
+
+    .field { margin-bottom: 0.85rem; }
+    .field label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-weight: 700;
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+    }
+    .field input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.8rem;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .invite-code {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #bc6c89;
+      background: #ffe9ef;
+      border-radius: 14px;
+      padding: 0.9rem;
+      text-align: center;
+      letter-spacing: 0.06em;
+      margin: 0.6rem 0 1rem;
+    }
+
+    .btn-primary, .btn-secondary {
+      width: 100%;
+      border-radius: 14px;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    .btn-primary {
+      border: none;
+      color: #fff;
+      background: linear-gradient(145deg, #f2ad95, #dd8fa5);
+      box-shadow: 0 8px 20px rgba(222, 124, 150, 0.3);
+    }
+    .btn-secondary {
+      border: 1px solid #eac5d1;
+      background: #fff;
+      color: #c97894;
+    }
+
+    .status-box {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      white-space: pre-wrap;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section id="screen-start" class="screen active" aria-label="登録開始">
+      <div class="topbar"><span class="logo-pill">CouplePlan</span></div>
+      <h1 class="hero-title">カップルで始める<br />登録フロー</h1>
+      <p class="hero-lead">ふたりで別アカウントのため、<strong>役割</strong>を選んでから進みます（実機ではブラウザを2つに分けてもOK）。</p>
+      <div class="card">
+        <div class="stepper"><span class="on">1</span><span>2</span><span>3</span><span>4</span></div>
+        <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">どちらに当てはまりますか？</p>
+        <button id="go-inviter" class="btn-primary" type="button">先に登録（招待コードを出す側）</button>
+        <button id="go-invitee" class="btn-secondary" type="button">あとから参加（コードを受け取った側）</button>
+      </div>
+    </section>
+
+    <section id="screen-profile" class="screen" aria-label="プロフィール入力">
+      <div class="topbar">
+        <button id="back-start" class="btn-back" type="button">←</button>
+        <span class="logo-pill">プロフィール</span>
+        <span style="width:44px"></span>
+      </div>
+      <h1 class="hero-title">あなたの情報を入力</h1>
+      <p id="profile-mode-hint" class="hero-lead" style="font-size:0.95rem;"> </p>
+      <div class="card">
+        <div class="stepper"><span class="on">1</span><span class="on">2</span><span>3</span><span>4</span></div>
+        <div class="field">
+          <label for="email">メールアドレス</label>
+          <input id="email" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="display-name">表示名</label>
+          <input id="display-name" type="text" placeholder="ずんだ太郎" />
+        </div>
+        <button id="go-pair" class="btn-primary" type="button">次へ（ペア連携）</button>
+      </div>
+    </section>
+
+    <section id="screen-pair" class="screen" aria-label="ペア連携">
+      <div class="topbar">
+        <button id="back-profile" class="btn-back" type="button">←</button>
+        <span class="logo-pill">ペア連携</span>
+        <span style="width:44px"></span>
+      </div>
+      <h1 id="pair-hero-title" class="hero-title">ペアをつなぐ</h1>
+      <p id="pair-hero-lead" class="hero-lead"> </p>
+      <div class="card">
+        <div class="stepper"><span class="on">1</span><span class="on">2</span><span class="on">3</span><span>4</span></div>
+        <div id="block-inviter">
+          <p class="hero-lead" style="margin-bottom:0.4rem; font-size:0.95rem;">あなたの招待コード（相手の端末に共有）</p>
+          <div id="invite-code" class="invite-code" aria-live="polite">CP----</div>
+          <button id="copy-invite-code" class="btn-secondary" type="button">コードをコピー</button>
+          <p class="hero-lead" style="font-size:0.9rem; margin:0.8rem 0 0.4rem;">相手は <strong>別のメール</strong>でログインし、下の手順でコードを入力します。こちらの画面は開いたままにしておけます。</p>
+          <button id="reissue-code" class="btn-secondary" type="button">コードを再発行</button>
+          <button id="btn-check-couple" class="btn-primary" type="button">相手が参加したか確認する</button>
+          <p class="hero-lead" style="font-size:0.88rem; margin-top:0.5rem; color:var(--ink-soft);">カップルが有効化されるまで、完了画面には進めません。</p>
+        </div>
+        <div id="block-invitee" hidden>
+          <p class="hero-lead" style="margin-bottom:0.4rem; font-size:0.95rem;">相手が共有した <code style="font-size:1em;">CP-</code> コードを入力</p>
+          <div class="field">
+            <label for="accept-code">招待コード</label>
+            <input id="accept-code" type="text" placeholder="例: CP-AB12" autocomplete="one-time-code" />
+          </div>
+          <button id="btn-accept-invite" class="btn-primary" type="button">カップルに参加する</button>
+        </div>
+        <div id="status" class="status-box">ステータス: 未接続</div>
+      </div>
+    </section>
+
+    <section id="screen-done" class="screen" aria-label="登録完了">
+      <div class="topbar"><span class="logo-pill">登録完了</span></div>
+      <div class="card">
+        <h1 class="hero-title">ふたりのカップルが有効になりました</h1>
+        <p class="hero-lead">以降のルーレット等はこのカップル紐づきで提供します。招待フローは上記導線で受け入れます。</p>
+        <button id="go-home" class="btn-primary" type="button">ホームへ進む</button>
+      </div>
+    </section>
+
+    <section id="screen-home" class="screen" aria-label="ホーム">
+      <div class="topbar"><span class="logo-pill">CouplePlan</span></div>
+      <div class="card">
+        <h1 class="hero-title">P1-1 完了画面</h1>
+        <p class="hero-lead">この画面は会員・ペア連携UIの本実装として `apps/web` で管理します。</p>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

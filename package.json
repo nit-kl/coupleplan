@@ -11,6 +11,13 @@
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
     "lint:html": "htmlhint \"prototype/**/*.html\"",
     "lint": "npm run lint:md && npm run lint:html",
+    "api:dev": "tsx apps/api/src/server.ts",
+    "api:typecheck": "tsc -p apps/api/tsconfig.json --noEmit",
+    "api:smoke": "node scripts/api-smoke-test.mjs",
+    "web:typecheck": "tsc -p apps/web/tsconfig.json --noEmit",
+    "web:dev": "vite --config apps/web/vite.config.ts",
+    "web:build": "vite build --config apps/web/vite.config.ts",
+    "web:preview": "vite preview --config apps/web/vite.config.ts",
     "test": "npm run lint"
   },
   "repository": {
@@ -26,7 +33,15 @@
   },
   "homepage": "https://github.com/nit-kl/coupleplan#readme",
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "htmlhint": "^1.9.2",
-    "markdownlint-cli": "^0.48.0"
+    "markdownlint-cli": "^0.48.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.0",
+    "hono": "^4.12.15",
+    "vite": "^6.4.2"
   }
 }
