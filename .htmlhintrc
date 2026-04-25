@@ -1,0 +1,7 @@
+{
+  "tag-pair": true,
+  "attr-no-duplication": true,
+  "id-unique": true,
+  "spec-char-escape": false,
+  "title-require": true
+}

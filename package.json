@@ -1,0 +1,32 @@
+{
+  "name": "coupleplan",
+  "version": "1.0.0",
+  "description": "カップル向けWebアプリ「CouplePlan」の開発リポジトリです。  \r 企画書とプロトタイプを起点に、本番実装へ移行するための土台を管理します。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
+    "lint:html": "htmlhint \"prototype/**/*.html\"",
+    "lint": "npm run lint:md && npm run lint:html",
+    "test": "npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nit-kl/coupleplan.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nit-kl/coupleplan/issues"
+  },
+  "homepage": "https://github.com/nit-kl/coupleplan#readme",
+  "devDependencies": {
+    "htmlhint": "^1.9.2",
+    "markdownlint-cli": "^0.48.0"
+  }
+}
