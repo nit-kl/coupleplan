@@ -37,4 +37,9 @@
 
 [開発計画書.md](../開発計画書.md) の「§6 ADR 候補」に列挙したトピック（認証、カップル/招待、ルーレット状態、ニンジャ、週次集計）は、**意思決定が固まったタイミング**で番号付きファイルを追加し、計画書の進捗表「関連ADR」列にファイル名を書き込む。
 
-現時点では **未作成**。判断前に実装しないこと。
+現時点の作成済みADR:
+
+- [0001-deployment-platform-cloudflare.md](./0001-deployment-platform-cloudflare.md)
+- [0002-authentication-email-otp.md](./0002-authentication-email-otp.md)
+
+引き続き、判断前に実装しないこと。
