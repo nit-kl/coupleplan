@@ -41,5 +41,6 @@
 
 - [0001-deployment-platform-cloudflare.md](./0001-deployment-platform-cloudflare.md)
 - [0002-authentication-email-otp.md](./0002-authentication-email-otp.md)
+- [0003-core-entities-couple-invite.md](./0003-core-entities-couple-invite.md)
 
 引き続き、判断前に実装しないこと。
