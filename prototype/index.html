@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>カップルプラン — ふたりの時間を、もっと楽しく</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream: #f7f3e9;
+      --peach: #ffd9c6;
+      --coral: #f3a08f;
+      --rose: #de7c96;
+      --sage: #83b79a;
+      --mint: #9adcc5;
+      --ink: #5a5164;
+      --ink-soft: #8f869d;
+      --line: #e8dfce;
+      --card-shadow: 0 8px 24px rgba(96, 86, 113, 0.1);
+      --radius-xl: 24px;
+      --radius-lg: 16px;
+      --tap: 56px;
+      --fs-hero: clamp(1.75rem, 5vw, 2.35rem);
+      --fs-title: clamp(1.35rem, 4vw, 1.75rem);
+      --fs-body: clamp(1.05rem, 3vw, 1.2rem);
+      --fs-small: clamp(0.95rem, 2.5vw, 1.05rem);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
+      background-color: var(--cream);
+      background-image: radial-gradient(rgba(90, 81, 100, 0.08) 1px, transparent 1px);
+      background-size: 14px 14px;
+      color: var(--ink);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 1rem 1.25rem 2.5rem 5rem;
+      position: relative;
+    }
+
+    .bg-blob {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(255, 217, 198, 0.5), transparent 55%),
+        radial-gradient(ellipse 70% 45% at 100% 20%, rgba(222, 124, 150, 0.1), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 50% 100%, rgba(131, 183, 154, 0.15), transparent 45%);
+      pointer-events: none;
+    }
+
+    .side-rail {
+      position: fixed;
+      left: 0.75rem;
+      top: 0.75rem;
+      bottom: 0.75rem;
+      width: 54px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.65rem 0.4rem;
+      gap: 0.55rem;
+    }
+
+    .rail-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      color: var(--ink-soft);
+    }
+
+    .rail-btn.active {
+      background: #ffe3ea;
+      color: var(--rose);
+    }
+
+    .rail-spacer {
+      flex: 1;
+    }
+
+    .screen {
+      display: none;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .btn-back {
+      border: 1px solid var(--line);
+      background: #fff;
+      width: var(--tap);
+      height: var(--tap);
+      border-radius: 50%;
+      font-size: 1.35rem;
+      cursor: pointer;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink);
+    }
+
+    .btn-back:active {
+      transform: scale(0.96);
+    }
+
+    .logo-pill {
+      font-weight: 700;
+      font-size: var(--fs-small);
+      color: #8468b4;
+      background: #efe8fb;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid #e1d6f6;
+    }
+
+    .hero-title {
+      font-size: var(--fs-hero);
+      font-weight: 800;
+      line-height: 1.35;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-lead {
+      font-size: var(--fs-body);
+      color: var(--ink-soft);
+      margin: 0 0 1.75rem;
+      line-height: 1.65;
+    }
+
+    .feature-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .portal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+    }
+
+    .portal-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .portal-brand strong {
+      font-size: 1.05rem;
+      color: var(--ink);
+    }
+
+    .portal-status {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .portal-badge {
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--ink-soft);
+      border-radius: 999px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .portal-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr 280px;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .portal-panel {
+      background: rgba(255, 255, 255, 0.78);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--line);
+      padding: 1rem;
+    }
+
+    .portal-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .portal-nav a {
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: var(--fs-small);
+      padding: 0.65rem 0.8rem;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(61, 53, 69, 0.08);
+    }
+
+    .portal-nav a.active {
+      background: #ffe7ee;
+      border-color: #f3cad8;
+      color: #c25f7e;
+    }
+
+    .portal-main h1.hero-title {
+      margin-top: 0.2rem;
+    }
+
+    .portal-main .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .portal-side {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+    }
+
+    .portal-mini-title {
+      margin: 0 0 0.6rem;
+      font-size: 0.95rem;
+      color: var(--ink-soft);
+      font-weight: 800;
+    }
+
+    .portal-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+    }
+
+    .portal-list li {
+      background: #fff;
+      border-radius: 12px;
+      padding: 0.6rem 0.7rem;
+      border: 1px solid rgba(61, 53, 69, 0.08);
+    }
+
+    .onboard-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .onboard-card {
+      background: rgba(255, 255, 255, 0.82);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--line);
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 1rem;
+    }
+
+    .stepper span {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 800;
+      background: rgba(61, 53, 69, 0.12);
+      color: var(--ink-soft);
+    }
+
+    .stepper span.on {
+      background: linear-gradient(145deg, #f4ab93, #de8ea5);
+      color: #fff;
+    }
+
+    .onboard-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .onboard-field label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+
+    .onboard-input {
+      width: 100%;
+      border: 1px solid rgba(61, 53, 69, 0.2);
+      background: #fff;
+      border-radius: 12px;
+      padding: 0.85rem 0.95rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--ink);
+    }
+
+    .onboard-input:focus {
+      outline: 2px solid rgba(232, 93, 117, 0.3);
+      border-color: rgba(232, 93, 117, 0.4);
+    }
+
+    .invite-code {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #bc6c89;
+      background: #ffe9ef;
+      border-radius: 14px;
+      padding: 0.9rem;
+      text-align: center;
+      letter-spacing: 0.06em;
+      margin: 0.8rem 0 1rem;
+    }
+
+    .feature-card {
+      border: 1px solid var(--line);
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      padding: 1.5rem 1.35rem;
+      border-radius: var(--radius-xl);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .feature-card:active {
+      transform: scale(0.98);
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 12px 32px rgba(96, 86, 113, 0.14);
+    }
+
+    .feature-icon {
+      font-size: 2.75rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .feature-card h2 {
+      margin: 0 0 0.25rem;
+      font-size: var(--fs-title);
+      font-weight: 800;
+    }
+
+    .feature-card p {
+      margin: 0;
+      font-size: var(--fs-small);
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+
+    .section-label {
+      font-size: var(--fs-small);
+      font-weight: 700;
+      color: #bf7f56;
+      margin: 2rem 0 0.75rem;
+    }
+
+    .hint-soft {
+      font-size: var(--fs-small);
+      color: var(--ink-soft);
+      text-align: center;
+      margin: 1rem 0 0;
+      line-height: 1.55;
+    }
+
+    /* Roulette card stack */
+    .card-stage {
+      position: relative;
+      height: 340px;
+      margin: 1rem 0 1.5rem;
+      perspective: 800px;
+    }
+
+    .date-card {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 92%;
+      max-width: 360px;
+      transform: translateX(-50%);
+      background: linear-gradient(165deg, #fff 0%, #fff8f5 100%);
+      border-radius: var(--radius-xl);
+      padding: 2rem 1.5rem;
+      box-shadow: var(--card-shadow);
+      text-align: center;
+      transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.3s;
+      border: 1px solid #eddcc7;
+    }
+
+    .date-card .emoji {
+      font-size: 3.5rem;
+      display: block;
+      margin-bottom: 0.75rem;
+    }
+
+    .date-card h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.45rem;
+      font-weight: 800;
+    }
+
+    .date-card .tag {
+      display: inline-block;
+      background: #fff2d7;
+      color: var(--ink);
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      margin-top: 0.5rem;
+    }
+
+    .swipe-actions {
+      display: flex;
+      gap: 1.25rem;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+
+    .btn-round {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      font-size: 1.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.12s;
+    }
+
+    .btn-round:active {
+      transform: scale(0.92);
+    }
+
+    .btn-pass {
+      background: #fff;
+      color: var(--ink-soft);
+    }
+
+    .btn-like {
+      background: linear-gradient(145deg, #f4aa92, #dc89a0);
+      color: #fff;
+    }
+
+    .progress-dots {
+      display: flex;
+      justify-content: center;
+      gap: 0.45rem;
+      margin-top: 1rem;
+    }
+
+    .progress-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(61, 53, 69, 0.15);
+    }
+
+    .progress-dots span.on {
+      background: var(--rose);
+      transform: scale(1.15);
+    }
+
+    /* Match reveal */
+    .match-banner {
+      background: linear-gradient(135deg, #f6c2af, #edb8c8);
+      color: #6f586b;
+      border-radius: var(--radius-xl);
+      padding: 1.75rem 1.25rem;
+      text-align: center;
+      margin: 1rem 0;
+      box-shadow: var(--card-shadow);
+    }
+
+    .match-banner strong {
+      font-size: var(--fs-title);
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .chip {
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      padding: 0.55rem 1rem;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: var(--fs-small);
+    }
+
+    /* Roulette wheel */
+    .wheel-wrap {
+      margin: 1.5rem auto;
+      width: min(280px, 85vw);
+      height: min(280px, 85vw);
+      position: relative;
+    }
+
+    .wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(
+        #ffd5bd 0deg 120deg,
+        #cde7d5 120deg 240deg,
+        #dbcdf0 240deg 360deg
+      );
+      box-shadow: inset 0 0 0 8px #fff, var(--card-shadow);
+      transition: transform 4s cubic-bezier(0.15, 0.85, 0.2, 1);
+      display: flex;
+      align-items: center;
+        justify-content: center;
+    }
+
+    .wheel-center {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: var(--card-shadow);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 22px solid var(--rose);
+      z-index: 3;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+    }
+
+    .wheel-labels {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .wheel-labels span {
+      position: absolute;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--ink);
+      text-shadow: 0 1px 0 #fff;
+      width: 33%;
+      text-align: center;
+    }
+
+    .wl1 { top: 18%; left: 50%; transform: translateX(-50%); }
+    .wl2 { bottom: 22%; right: 8%; }
+    .wl3 { bottom: 22%; left: 8%; }
+
+    .btn-primary {
+      width: 100%;
+      border: none;
+      padding: 1.1rem 1.25rem;
+      font-size: var(--fs-body);
+      font-weight: 800;
+      font-family: inherit;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #f2ad95, #dd8fa5);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(222, 124, 150, 0.3);
+      margin-top: 0.5rem;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      border: 1px solid #eac5d1;
+      background: #fff;
+      padding: 1rem;
+      font-size: var(--fs-body);
+      font-weight: 700;
+      font-family: inherit;
+      border-radius: 14px;
+      color: #c97894;
+      cursor: pointer;
+      margin-top: 0.75rem;
+    }
+
+    /* Share result card */
+    .share-card {
+      background: linear-gradient(160deg, #fff 0%, #fff6f0 100%);
+      border-radius: var(--radius-xl);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--card-shadow);
+      border: 2px dashed #eec8d4;
+      margin: 1rem 0;
+    }
+
+    .share-card .big-emoji {
+      font-size: 4rem;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .share-card h2 {
+      margin: 0 0 0.25rem;
+      font-size: var(--fs-hero);
+      font-weight: 800;
+      color: var(--rose);
+    }
+
+    .share-card .sub {
+      font-size: var(--fs-body);
+      color: var(--ink-soft);
+      margin: 0;
+    }
+
+    .hashtag {
+      margin-top: 1.25rem;
+      font-size: var(--fs-small);
+      font-weight: 700;
+      color: var(--sage);
+    }
+
+    /* Ninja */
+    .mission-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      margin: 1rem 0;
+    }
+
+    .mission-btn {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: var(--radius-lg);
+      padding: 1.15rem 1.25rem;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-family: inherit;
+      transition: transform 0.12s;
+    }
+
+    .mission-btn:active {
+      transform: scale(0.99);
+    }
+
+    .mission-btn .left {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .mission-btn .ico {
+      font-size: 1.85rem;
+    }
+
+    .mission-btn .txt strong {
+      display: block;
+      font-size: var(--fs-body);
+      font-weight: 800;
+    }
+
+    .mission-btn .txt span {
+      font-size: var(--fs-small);
+      color: var(--ink-soft);
+    }
+
+    .pt-badge {
+      background: var(--mint);
+      color: #fff;
+      font-weight: 800;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      font-size: var(--fs-small);
+      flex-shrink: 0;
+    }
+
+    .ninja-toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: var(--ink);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      border-radius: var(--radius-lg);
+      font-weight: 700;
+      font-size: var(--fs-small);
+      box-shadow: var(--card-shadow);
+      opacity: 0;
+      transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.3s;
+      z-index: 100;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .ninja-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .week-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem 1.25rem;
+      box-shadow: var(--card-shadow);
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .week-card .time {
+      font-size: var(--fs-title);
+      font-weight: 800;
+      color: var(--rose);
+      margin: 0 0 0.5rem;
+    }
+
+    .week-card p {
+      margin: 0;
+      font-size: var(--fs-body);
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+
+    .rank-podium {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 0.75rem;
+      margin: 1.5rem 0 1rem;
+    }
+
+    .podium-item {
+      text-align: center;
+      border-radius: var(--radius-lg);
+      padding: 1rem 0.75rem;
+      min-width: 100px;
+    }
+
+    .podium-item.first {
+      background: linear-gradient(180deg, #ffe8b8, #ffdd9a);
+      order: 2;
+      padding-bottom: 1.5rem;
+    }
+
+    .podium-item.second {
+      background: #f7decf;
+      order: 1;
+      padding-bottom: 1rem;
+    }
+
+    .podium-item .name {
+      font-weight: 800;
+      font-size: var(--fs-small);
+    }
+
+    .podium-item .pts {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-top: 0.25rem;
+    }
+
+    footer.foot {
+      margin-top: 2.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
+
+    @media (max-width: 1024px) {
+      .portal-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .portal-main .feature-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        max-width: 440px;
+        padding-left: 1rem;
+      }
+
+      .portal-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .portal-status {
+        justify-content: flex-start;
+      }
+
+      .side-rail {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-blob" aria-hidden="true"></div>
+  <aside class="side-rail" aria-hidden="true">
+    <div class="rail-btn">↩</div>
+    <div class="rail-btn active">🏠</div>
+    <div class="rail-btn">🗂</div>
+    <div class="rail-btn">💬</div>
+    <div class="rail-btn">✨</div>
+    <div class="rail-spacer"></div>
+    <div class="rail-btn">⚙</div>
+  </aside>
+  <div class="app">
+    <!-- Onboarding: start -->
+    <section id="screen-onboarding-start" class="screen active" aria-label="登録開始">
+      <div class="onboard-wrap">
+        <div class="topbar">
+          <span class="logo-pill">CouplePlan</span>
+        </div>
+        <h1 class="hero-title">カップルで始める<br />登録フロー</h1>
+        <p class="hero-lead">まずはあなたのプロフィールを作って、相手とペア連携しましょう。</p>
+        <div class="onboard-card">
+          <div class="stepper" aria-hidden="true">
+            <span class="on">1</span><span>2</span><span>3</span><span>4</span>
+          </div>
+          <p class="hero-lead" style="font-size: var(--fs-small); margin-bottom: 1rem;">
+            このプロトタイプでは「招待コードで相手をペア招待」する流れを再現しています。
+          </p>
+          <button type="button" class="btn-primary" id="go-onboarding-profile">登録をはじめる</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Onboarding: profile -->
+    <section id="screen-onboarding-profile" class="screen" aria-label="プロフィール登録">
+      <div class="onboard-wrap">
+        <div class="topbar">
+          <button type="button" class="btn-back" id="back-from-profile" aria-label="戻る">←</button>
+          <span class="logo-pill">プロフィール</span>
+          <span style="width:56px"></span>
+        </div>
+        <h1 class="hero-title" style="font-size: var(--fs-title);">あなたの情報を入力</h1>
+        <div class="onboard-card">
+          <div class="stepper" aria-hidden="true">
+            <span class="on">1</span><span class="on">2</span><span>3</span><span>4</span>
+          </div>
+          <div class="onboard-field">
+            <label for="profile-name">表示名</label>
+            <input id="profile-name" class="onboard-input" type="text" placeholder="例: ずんだ太郎" />
+          </div>
+          <div class="onboard-field">
+            <label for="profile-email">メールアドレス</label>
+            <input id="profile-email" class="onboard-input" type="email" placeholder="taro@example.com" />
+          </div>
+          <button type="button" class="btn-primary" id="go-onboarding-pair">次へ（ペア連携）</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Onboarding: pair -->
+    <section id="screen-onboarding-pair" class="screen" aria-label="ペア連携">
+      <div class="onboard-wrap">
+        <div class="topbar">
+          <button type="button" class="btn-back" id="back-from-pair" aria-label="戻る">←</button>
+          <span class="logo-pill">ペア連携</span>
+          <span style="width:56px"></span>
+        </div>
+        <h1 class="hero-title" style="font-size: var(--fs-title);">招待コードでつながる</h1>
+        <div class="onboard-card">
+          <div class="stepper" aria-hidden="true">
+            <span class="on">1</span><span class="on">2</span><span class="on">3</span><span>4</span>
+          </div>
+          <p class="hero-lead" style="font-size: var(--fs-small); margin-bottom: 0.4rem;">あなたの招待コード（共有用）</p>
+          <div class="invite-code" id="invite-code">CP-7421</div>
+          <div class="onboard-field">
+            <label for="pair-code-input">相手のコードを入力（受け取った場合）</label>
+            <input id="pair-code-input" class="onboard-input" type="text" placeholder="例: CP-AB12" />
+          </div>
+          <button type="button" class="btn-secondary" id="regenerate-code">コードを再発行</button>
+          <button type="button" class="btn-primary" id="go-onboarding-done">ペア連携を完了する（デモ）</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Onboarding: done -->
+    <section id="screen-onboarding-done" class="screen" aria-label="登録完了">
+      <div class="onboard-wrap">
+        <div class="topbar">
+          <span class="logo-pill">登録完了</span>
+        </div>
+        <div class="share-card">
+          <div class="big-emoji">💞</div>
+          <h2>ペア登録できました</h2>
+          <p class="sub">ふたりのポータルへ進んで、週末プラン作りをはじめましょう。</p>
+        </div>
+        <button type="button" class="btn-primary" id="enter-portal">ポータルへ進む</button>
+      </div>
+    </section>
+
+    <!-- Home -->
+    <section id="screen-home" class="screen" aria-label="ホーム">
+      <div class="portal-header">
+        <div class="portal-brand">
+          <span class="logo-pill">CouplePlan</span>
+          <strong>ふたりのポータル</strong>
+        </div>
+        <div class="portal-status" aria-label="ステータス">
+          <span class="portal-badge">今週の予定: 3件</span>
+          <span class="portal-badge">未読おしらせ: 2件</span>
+          <span class="portal-badge">ニンジャPt: 58</span>
+        </div>
+      </div>
+
+      <div class="portal-layout">
+        <aside class="portal-panel">
+          <p class="portal-mini-title">メニュー</p>
+          <nav class="portal-nav" aria-label="ポータルメニュー">
+            <a href="#" class="active">ホーム</a>
+            <a href="#">今週の予定</a>
+            <a href="#">思い出アルバム</a>
+            <a href="#">ポイント履歴</a>
+            <a href="#">設定</a>
+          </nav>
+        </aside>
+
+        <main class="portal-main portal-panel">
+          <h1 class="hero-title">ふたりの週末、<br />一緒に決めよ？</h1>
+          <p class="hero-lead">難しいことはアプリに任せて。あとは楽しむだけ。</p>
+
+          <div class="feature-grid">
+            <button type="button" class="feature-card" id="go-roulette" aria-label="ミステリールーレットを開く">
+              <span class="feature-icon" aria-hidden="true">🎲</span>
+              <div>
+                <h2>ミステリールーレット</h2>
+                <p>「今週末どこ行く？」をドキドキ抽選。ふたりのイエスだけが残る。</p>
+              </div>
+            </button>
+            <button type="button" class="feature-card" id="go-ninja" aria-label="サイレントニンジャを開く">
+              <span class="feature-icon" aria-hidden="true">🥷</span>
+              <div>
+                <h2>サイレント・ニンジャ</h2>
+                <p>こっそり家事してポイント。日曜の結果発表でサプライズ。</p>
+              </div>
+            </button>
+          </div>
+
+          <p class="section-label">プロトタイプについて</p>
+          <p class="hero-lead" style="margin-bottom: 0; font-size: var(--fs-small);">実際の相手連携はまだデモです。操作の感触だけ試せます。</p>
+        </main>
+
+        <aside class="portal-side">
+          <section class="portal-panel">
+            <p class="portal-mini-title">おしらせ</p>
+            <ul class="portal-list">
+              <li>💡 今週のおすすめ: 夜カフェ特集を追加しました</li>
+              <li>🎉 ミッション達成でボーナスポイント配布中</li>
+              <li>🗓 日曜20:00にニンジャ結果を公開します</li>
+            </ul>
+          </section>
+          <section class="portal-panel">
+            <p class="portal-mini-title">次の予定</p>
+            <ul class="portal-list">
+              <li>土曜 11:30 - ランチ候補チェック</li>
+              <li>土曜 14:00 - ルーレットで行き先決定</li>
+              <li>日曜 20:00 - サイレントニンジャ結果発表</li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <footer class="foot">カップルプラン（企画書ベース・HTMLプロトタイプ）</footer>
+    </section>
+
+    <!-- Roulette: swipe -->
+    <section id="screen-roulette-swipe" class="screen" aria-label="デートプランを選ぶ">
+      <div class="topbar">
+        <button type="button" class="btn-back" id="back-from-swipe" aria-label="戻る">←</button>
+        <span class="logo-pill">ルーレット</span>
+        <span style="width:56px"></span>
+      </div>
+      <h1 class="hero-title" style="font-size: var(--fs-title);">気になるの、タップで教えて</h1>
+      <p class="hero-lead" style="margin-bottom: 0.5rem;">相手には見えないよ（デモ）</p>
+
+      <div class="card-stage" id="card-stage">
+        <!-- cards injected -->
+      </div>
+      <div class="progress-dots" id="roulette-dots" aria-hidden="true"></div>
+      <p class="hint-soft">💗 いいね　／　パス</p>
+    </section>
+
+    <!-- Roulette: match -->
+    <section id="screen-roulette-match" class="screen" aria-label="マッチしたプラン">
+      <div class="topbar">
+        <button type="button" class="btn-back" id="back-from-match" aria-label="戻る">←</button>
+        <span class="logo-pill">マッチ</span>
+        <span style="width:56px"></span>
+      </div>
+      <div class="match-banner">
+        <strong>ふたりともイエス！</strong>
+        <span style="opacity:0.95;font-size:var(--fs-small);">この中から運命が決まるよ</span>
+      </div>
+      <div class="chip-row" id="match-chips"></div>
+      <button type="button" class="btn-primary" id="go-spin">ルーレットを回す 🎡</button>
+    </section>
+
+    <!-- Roulette: spin -->
+    <section id="screen-roulette-spin" class="screen" aria-label="ルーレット">
+      <div class="topbar">
+        <button type="button" class="btn-back" id="back-from-spin" aria-label="戻る">←</button>
+        <span class="logo-pill">抽選中</span>
+        <span style="width:56px"></span>
+      </div>
+      <h1 class="hero-title" style="font-size: var(--fs-title); text-align:center;">いっしょにワクワクしよ</h1>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer" aria-hidden="true"></div>
+        <div class="wheel" id="wheel">
+          <div class="wheel-labels">
+            <span class="wl1" id="wl1">A</span>
+            <span class="wl2" id="wl2">B</span>
+            <span class="wl3" id="wl3">C</span>
+          </div>
+        </div>
+        <div class="wheel-center" aria-hidden="true">🎲</div>
+      </div>
+      <button type="button" class="btn-primary" id="btn-spin-go">スタート！</button>
+    </section>
+
+    <!-- Roulette: result -->
+    <section id="screen-roulette-result" class="screen" aria-label="結果">
+      <div class="topbar">
+        <button type="button" class="btn-back" id="back-from-result" aria-label="ホームへ">←</button>
+        <span class="logo-pill">決定！</span>
+        <span style="width:56px"></span>
+      </div>
+      <div class="share-card" id="share-card">
+        <span class="big-emoji" id="result-emoji">☕</span>
+        <h2 id="result-title">新しいカフェ巡り</h2>
+        <p class="sub" id="result-sub">今週末のデート、これに決まりました</p>
+        <p class="hashtag">#ミステリールーレット #カップルプラン</p>
+      </div>
+      <button type="button" class="btn-secondary" id="mock-share">スクショしてシェア（イメージ）</button>
+      <button type="button" class="btn-primary" id="roulette-done">ホームに戻る</button>
+    </section>
+
+    <!-- Ninja: missions -->
+    <section id="screen-ninja" class="screen" aria-label="ニンジャ任務">
+      <div class="topbar">
+        <button type="button" class="btn-back" id="back-from-ninja" aria-label="戻る">←</button>
+        <span class="logo-pill">ニンジャ</span>
+        <span style="width:56px"></span>
+      </div>
+      <h1 class="hero-title" style="font-size: var(--fs-title);">やったことを、そっと記録</h1>
+      <p class="hero-lead" style="margin-bottom: 0.5rem;">相手には今すぐバレない（デモ）</p>
+
+      <div class="mission-list" id="mission-list"></div>
+
+      <div class="week-card">
+        <p class="time">日曜 20:00</p>
+        <p>ふたりのポイント、一気に公開。感謝のサプライズが届くよ。</p>
+      </div>
+      <button type="button" class="btn-primary" id="go-ninja-result">今週の結果を見る（デモ）</button>
+    </section>
+
+    <!-- Ninja: result demo -->
+    <section id="screen-ninja-result" class="screen" aria-label="ニンジャ結果">
+      <div class="topbar">
+        <button type="button" class="btn-back" id="back-from-ninja-res" aria-label="戻る">←</button>
+        <span class="logo-pill">結果</span>
+        <span style="width:56px"></span>
+      </div>
+      <h1 class="hero-title" style="font-size: var(--fs-title); text-align:center;">今週のニンジャ 🥷</h1>
+      <div class="rank-podium">
+        <div class="podium-item second">
+          <div class="name">彼氏くん</div>
+          <div class="pts">42</div>
+        </div>
+        <div class="podium-item first">
+          <div class="name">あなた</div>
+          <div class="pts">58</div>
+        </div>
+      </div>
+      <div class="share-card" style="border-style: solid; border-color: rgba(156, 184, 156, 0.5);">
+        <p class="sub" style="font-weight:800;color:var(--ink);margin-bottom:0.5rem;">「え、こんなこともしてくれてたの…？」</p>
+        <p class="sub">負けた人から、ご褒美タイム。</p>
+        <p class="hashtag">#サイレントニンジャ #カップルプラン</p>
+      </div>
+      <button type="button" class="btn-primary" id="ninja-done">ホームに戻る</button>
+    </section>
+  </div>
+
+  <div class="ninja-toast" id="ninja-toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const screens = {
+        onboardingStart: document.getElementById("screen-onboarding-start"),
+        onboardingProfile: document.getElementById("screen-onboarding-profile"),
+        onboardingPair: document.getElementById("screen-onboarding-pair"),
+        onboardingDone: document.getElementById("screen-onboarding-done"),
+        home: document.getElementById("screen-home"),
+        rouletteSwipe: document.getElementById("screen-roulette-swipe"),
+        rouletteMatch: document.getElementById("screen-roulette-match"),
+        rouletteSpin: document.getElementById("screen-roulette-spin"),
+        rouletteResult: document.getElementById("screen-roulette-result"),
+        ninja: document.getElementById("screen-ninja"),
+        ninjaResult: document.getElementById("screen-ninja-result"),
+      };
+
+      function show(id) {
+        Object.values(screens).forEach((el) => el.classList.remove("active"));
+        screens[id].classList.add("active");
+        window.scrollTo(0, 0);
+      }
+
+      function makeInviteCode() {
+        const pool = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let suffix = "";
+        for (let i = 0; i < 4; i++) {
+          suffix += pool[Math.floor(Math.random() * pool.length)];
+        }
+        return "CP-" + suffix;
+      }
+
+      document.getElementById("go-onboarding-profile").addEventListener("click", () => show("onboardingProfile"));
+      document.getElementById("back-from-profile").addEventListener("click", () => show("onboardingStart"));
+      document.getElementById("back-from-pair").addEventListener("click", () => show("onboardingProfile"));
+
+      document.getElementById("go-onboarding-pair").addEventListener("click", () => {
+        const name = document.getElementById("profile-name").value.trim();
+        const email = document.getElementById("profile-email").value.trim();
+        if (!name || !email) {
+          alert("表示名とメールアドレスを入力してください。");
+          return;
+        }
+        show("onboardingPair");
+      });
+
+      document.getElementById("regenerate-code").addEventListener("click", () => {
+        document.getElementById("invite-code").textContent = makeInviteCode();
+      });
+
+      document.getElementById("go-onboarding-done").addEventListener("click", () => {
+        const code = document.getElementById("pair-code-input").value.trim();
+        if (code && !/^CP-[A-Za-z0-9]{4,8}$/.test(code)) {
+          alert("コード形式が違います。例: CP-AB12");
+          return;
+        }
+        show("onboardingDone");
+      });
+
+      document.getElementById("enter-portal").addEventListener("click", () => show("home"));
+
+      const plans = [
+        { emoji: "🐠", title: "水族館デート", tag: "のんびり半日" },
+        { emoji: "☕", title: "新しいカフェ巡り", tag: "カフェ好きに◎" },
+        { emoji: "🎬", title: "映画＆ごはん", tag: "定番も大事" },
+        { emoji: "🧺", title: "公園ピクニック", tag: "おしゃピク" },
+        { emoji: "🎨", title: "美術館・イラスト展", tag: "感性デート" },
+      ];
+
+      let swipeIndex = 0;
+      const liked = [];
+
+      function renderCard() {
+        const stage = document.getElementById("card-stage");
+        const dots = document.getElementById("roulette-dots");
+        stage.innerHTML = "";
+        dots.innerHTML = "";
+        for (let i = 0; i < plans.length; i++) {
+          const d = document.createElement("span");
+          if (i === swipeIndex) d.classList.add("on");
+          dots.appendChild(d);
+        }
+        if (swipeIndex >= plans.length) return;
+
+        const p = plans[swipeIndex];
+        const card = document.createElement("div");
+        card.className = "date-card";
+        card.style.zIndex = 10;
+        card.innerHTML =
+          '<span class="emoji">' +
+          p.emoji +
+          "</span><h3>" +
+          p.title +
+          '</h3><span class="tag">' +
+          p.tag +
+          "</span>" +
+          '<div class="swipe-actions">' +
+          '<button type="button" class="btn-round btn-pass" data-act="pass" aria-label="パス">✕</button>' +
+          '<button type="button" class="btn-round btn-like" data-act="like" aria-label="いいね">💗</button>' +
+          '</div>';
+        stage.appendChild(card);
+
+        card.querySelectorAll("[data-act]").forEach((btn) => {
+          btn.addEventListener("click", onSwipeChoice);
+        });
+      }
+
+      function onSwipeChoice(e) {
+        const act = e.currentTarget.getAttribute("data-act");
+        const stage = document.getElementById("card-stage");
+        const card = stage.querySelector(".date-card");
+        if (!card) return;
+        if (act === "like") liked.push(plans[swipeIndex]);
+        card.style.transform =
+          act === "like"
+            ? "translateX(120%) rotate(12deg)"
+            : "translateX(-120%) rotate(-12deg)";
+        card.style.opacity = "0";
+        swipeIndex++;
+        setTimeout(() => {
+          if (swipeIndex >= plans.length) {
+            const chips = document.getElementById("match-chips");
+            chips.innerHTML = "";
+            const showPlans = liked.length >= 3 ? liked : plans.slice(0, 3);
+            showPlans.forEach((p) => {
+              const c = document.createElement("span");
+              c.className = "chip";
+              c.textContent = p.emoji + " " + p.title;
+              chips.appendChild(c);
+            });
+            window._spinCandidates = showPlans;
+            show("rouletteMatch");
+          } else renderCard();
+        }, 320);
+      }
+
+      document.getElementById("go-roulette").addEventListener("click", () => {
+        swipeIndex = 0;
+        liked.length = 0;
+        renderCard();
+        show("rouletteSwipe");
+      });
+
+      document.getElementById("back-from-swipe").addEventListener("click", () => show("home"));
+      document.getElementById("back-from-match").addEventListener("click", () => show("rouletteSwipe"));
+      document.getElementById("back-from-spin").addEventListener("click", () => show("rouletteMatch"));
+      document.getElementById("back-from-result").addEventListener("click", () => show("home"));
+
+      document.getElementById("go-spin").addEventListener("click", () => {
+        const c = window._spinCandidates || plans.slice(0, 3);
+        document.getElementById("wl1").textContent = c[0] ? c[0].title.slice(0, 6) : "A";
+        document.getElementById("wl2").textContent = c[1] ? c[1].title.slice(0, 6) : "B";
+        document.getElementById("wl3").textContent = c[2] ? c[2].title.slice(0, 6) : "C";
+        document.getElementById("wheel").style.transform = "rotate(0deg)";
+        show("rouletteSpin");
+      });
+
+      document.getElementById("btn-spin-go").addEventListener("click", () => {
+        const wheel = document.getElementById("wheel");
+        const c = window._spinCandidates || plans.slice(0, 3);
+        const pick = c[Math.floor(Math.random() * c.length)];
+        const turns = 5 + Math.random() * 2;
+        wheel.style.transform = "rotate(" + turns * 360 + "deg)";
+        setTimeout(() => {
+          document.getElementById("result-emoji").textContent = pick.emoji;
+          document.getElementById("result-title").textContent = pick.title;
+          document.getElementById("result-sub").textContent = "今週末のデート、これに決まりました";
+          show("rouletteResult");
+        }, 4100);
+      });
+
+      document.getElementById("roulette-done").addEventListener("click", () => show("home"));
+      document.getElementById("mock-share").addEventListener("click", () => {
+        alert("本番ではXやInstagramにワンタップで投稿できる想定です（プロトタイプ）");
+      });
+
+      const missions = [
+        { ico: "👟", name: "靴をそろえた", sub: "さりげなくスッキリ", pt: 5 },
+        { ico: "🧽", name: "水回りをふいた", sub: "ピカピカ担当", pt: 10 },
+        { ico: "🧊", name: "冷蔵庫整理", sub: "見える化チャレンジ", pt: 15 },
+        { ico: "☕", name: "朝コーヒーをいれた", sub: "小さなサプライズ", pt: 8 },
+      ];
+
+      const list = document.getElementById("mission-list");
+      missions.forEach((m) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "mission-btn";
+        b.innerHTML =
+          '<span class="left"><span class="ico">' +
+          m.ico +
+          '</span><span class="txt"><strong>' +
+          m.name +
+          "</strong><span>タップで記録（デモ）</span></span></span>" +
+          '<span class="pt-badge">+' +
+          m.pt +
+          "pt</span>";
+        b.addEventListener("click", () => {
+          const t = document.getElementById("ninja-toast");
+          t.textContent = "🥷 記録したよ（相手にはまだナイショ） · +" + m.pt + "pt";
+          t.classList.add("show");
+          setTimeout(() => t.classList.remove("show"), 2600);
+        });
+        list.appendChild(b);
+      });
+
+      document.getElementById("go-ninja").addEventListener("click", () => show("ninja"));
+      document.getElementById("back-from-ninja").addEventListener("click", () => show("home"));
+      document.getElementById("go-ninja-result").addEventListener("click", () => show("ninjaResult"));
+      document.getElementById("back-from-ninja-res").addEventListener("click", () => show("ninja"));
+      document.getElementById("ninja-done").addEventListener("click", () => show("home"));
+    })();
+  </script>
+</body>
+</html>
