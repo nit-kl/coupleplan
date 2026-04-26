@@ -35,8 +35,9 @@
 
 ## 補足（2026-04-26 時点の実装）
 
-- API 向けは `apps/api/wrangler.toml` と Hono on Workers。CI/CD: [`.github/workflows/deploy-api.yml`](../../.github/workflows/deploy-api.yml)（`develop` → Staging、`main` → Production。D1 マイグレーション併用）。
-- Web（Pages）のデプロイはリポジトリ方針で未完了の場合がある（開発計画書 §2.2 参照）。
+- API 向けは `apps/api/wrangler.toml` と Hono on Workers。デプロイの推奨は **Cloudflare ダッシュボードの Git 連携**（[Workers CI/CD](https://developers.cloudflare.com/workers/ci-cd/builds/)、手順: [P1-1_手動テスト.md](../P1-1_手動テスト.md#cloudflare-staging本番git-連携)）。リポ内の `deploy-*.yml` は用いない運用可。
+- フロントは Cloudflare Pages の Git 連携。D1 マイグレーションは `npm run d1:migrate:staging` 等（ルート `package.json`）。
+- Web（Pages）未接続の場合は [開発計画書.md](../開発計画書.md) §2.2 参照。
 
 ## 関連
 

@@ -1,5 +1,12 @@
-# P0-9: ローカル検証用の既定。本番/Staging では database_id / name を置換し、
-# `wrangler d1 create` で発行した ID を [env.staging] / [env.production] に分ける。
+# Workers + D1。デプロイは Cloudflare ダッシュボードの「Git 連携」推奨（.github の deploy ワークフローは使わない運用可）。
+# 初回: Cloudflare ログイン後、以下で D1 を作成し、出力 UUID を下記 database_id に貼る。
+#   cd apps/api && npx wrangler d1 create coupleplan-local
+#   npx wrangler d1 create coupleplan-staging
+#   npx wrangler d1 create coupleplan
+# リモートへマイグレーション（認証要）: npm run d1:migrate:staging など（ルート package.json）
+#
+# シークレットはダッシュボード「Variables and Secrets」または wrangler secret put:
+#   RESEND_API_KEY, RESEND_FROM（任意）, 公開変数 ALLOWED_ORIGINS（カンマ区切り: Pages URL + 必要なら http://localhost:5173）
 
 name = "coupleplan-api"
 main = "src/worker.ts"
@@ -11,26 +18,27 @@ enabled = true
 [vars]
 ENVIRONMENT = "development"
 
-# ローカル: `cd apps/api && npx wrangler d1 create coupleplan-local` で得た ID を貼る
+# ローカル: wrangler d1 create coupleplan-local の UUID
 [[d1_databases]]
 binding = "DB"
 database_name = "coupleplan-local"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "914eb18d-26f7-4dc7-af86-7932093f17f5"
 migrations_dir = "migrations"
 
-# Staging: develop 向け。database_id を Cloudflare ダッシュボード or wrangler 出力で上書き
 [env.staging]
 name = "coupleplan-api-staging"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
+# 例: ALLOWED_ORIGINS = "https://<pages>.pages.dev,http://localhost:5173"
+# 未設定時の API デフォルトは localhost CORS。Pages から触る前に必ず Worker に設定。
 
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "coupleplan-staging"
-database_id = "00000000-0000-0000-0000-000000000001"
+database_id = "2ca92f29-6c8e-4595-a4e3-07854290365e"
+migrations_dir = "migrations"
 
-# Production: main 向け
 [env.production]
 name = "coupleplan-api"
 
@@ -40,4 +48,5 @@ ENVIRONMENT = "production"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "coupleplan"
-database_id = "00000000-0000-0000-0000-000000000002"
+database_id = "fff27d9d-727d-4d51-8d61-07a86dded9c1"
+migrations_dir = "migrations"

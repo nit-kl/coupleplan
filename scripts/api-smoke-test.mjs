@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 
-const BASE_URL = "http://127.0.0.1:8787";
+const BASE_URL = (process.env.API_BASE_URL ?? "http://127.0.0.1:8787").replace(/\/$/, "");
+const USE_REMOTE = Boolean(process.env.API_BASE_URL);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,7 +22,7 @@ function assert(condition, message) {
   }
 }
 
-async function waitForServer(maxAttempts = 20) {
+async function waitForLocalServer(maxAttempts = 20) {
   for (let i = 0; i < maxAttempts; i += 1) {
     try {
       const resp = await fetch(`${BASE_URL}/couples/me`);
@@ -34,19 +35,47 @@ async function waitForServer(maxAttempts = 20) {
   return false;
 }
 
-async function run() {
-  const runner = process.platform === "win32" ? "npm run api:dev" : "npm run api:dev";
-  const server = spawn(runner, {
-    stdio: ["ignore", "pipe", "pipe"],
-    shell: true,
-  });
+async function pingRemote() {
+  try {
+    const resp = await fetch(`${BASE_URL}/couples/me`);
+    return resp.status === 401 || resp.status === 404;
+  } catch {
+    return false;
+  }
+}
 
-  server.stdout.on("data", (chunk) => process.stdout.write(`[api] ${chunk}`));
-  server.stderr.on("data", (chunk) => process.stderr.write(`[api:err] ${chunk}`));
+async function run() {
+  let server = null;
+
+  if (!USE_REMOTE) {
+    const runner = "npm run api:dev";
+    server = spawn(runner, {
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: true,
+    });
+    server.stdout.on("data", (chunk) => process.stdout.write(`[api] ${chunk}`));
+    server.stderr.on("data", (chunk) => process.stderr.write(`[api:err] ${chunk}`));
+  }
+
+  const cleanup = () => {
+    if (server && !server.killed) {
+      if (process.platform === "win32") {
+        spawn("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore", shell: true });
+      } else {
+        server.kill("SIGTERM");
+      }
+    }
+  };
 
   try {
-    const ready = await waitForServer();
-    assert(ready, "APIサーバーが起動しませんでした");
+    if (USE_REMOTE) {
+      const ok = await pingRemote();
+      assert(ok, `リモート API に到達できません: ${BASE_URL}（CORS/URL/稼働を確認）`);
+      console.log(`P1-1 smoke (remote) → ${BASE_URL}`);
+    } else {
+      const ready = await waitForLocalServer();
+      assert(ready, "APIサーバーが起動しませんでした");
+    }
 
     const emailA = "partner-a@example.com";
     const emailB = "partner-b@example.com";
@@ -56,7 +85,7 @@ async function run() {
       body: JSON.stringify({ email: emailA }),
     });
     assert(otpA.status === 202, "OTP request A failed");
-    assert(otpA.data.debugCode, "OTP code A missing");
+    assert(otpA.data.debugCode, "OTP code A missing（Staging なら平文 debugCode あり。本番+Resend では自動スモーク不可）");
 
     const verifyA = await request("/auth/otp/verify", {
       method: "POST",
@@ -92,6 +121,7 @@ async function run() {
       body: JSON.stringify({ email: emailB }),
     });
     assert(otpB.status === 202, "OTP request B failed");
+    assert(otpB.data.debugCode, "OTP code B missing");
 
     const verifyB = await request("/auth/otp/verify", {
       method: "POST",
@@ -120,13 +150,7 @@ async function run() {
 
     console.log("P1-1 smoke test passed.");
   } finally {
-    if (!server.killed) {
-      if (process.platform === "win32") {
-        spawn("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore", shell: true });
-      } else {
-        server.kill("SIGTERM");
-      }
-    }
+    cleanup();
   }
 }
 

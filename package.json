@@ -22,6 +22,8 @@
     "api:dev:worker": "wrangler dev --config apps/api/wrangler.toml",
     "api:deploy:staging": "wrangler deploy --config apps/api/wrangler.toml --env staging",
     "api:deploy:production": "wrangler deploy --config apps/api/wrangler.toml --env production",
+    "d1:migrate:staging": "wrangler d1 migrations apply coupleplan-staging --remote --config apps/api/wrangler.toml --env staging",
+    "d1:migrate:production": "wrangler d1 migrations apply coupleplan --remote --config apps/api/wrangler.toml --env production",
     "test": "npm run lint"
   },
   "repository": {

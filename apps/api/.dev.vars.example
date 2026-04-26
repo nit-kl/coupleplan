@@ -1,0 +1,7 @@
+# wrangler dev 用。コピーして .dev.vars を作る（.dev.vars は .gitignore 想定）
+# 本番/Staging の Worker シークレットは Cloudflare ダッシュボードで設定。
+# Resend の API キー・From・ドメイン手順: docs/P1-1_手動テスト.md §2
+
+RESEND_API_KEY=
+# RESEND_FROM=CouplePlan <onboarding@resend.dev>
+# ALLOWED_ORIGINS=http://localhost:5173,https://xxxxx.pages.dev
