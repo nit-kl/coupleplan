@@ -1,103 +1,166 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { AppError } from "./domain/errors";
+import { createOtpEmailFromEnv, type OtpEmailSender } from "./infra/email/otpEmail";
 import { InMemoryRepository } from "./infra/inMemoryRepository";
+import type { AppRepository } from "./domain/repository";
 import { AuthUsecase } from "./usecases/authUsecase";
 import { CoupleUsecase } from "./usecases/coupleUsecase";
 
-const repo = new InMemoryRepository();
-const authUsecase = new AuthUsecase(repo);
-const coupleUsecase = new CoupleUsecase(repo);
+export type AppEnv = {
+  NODE_ENV?: string;
+  ENVIRONMENT?: string;
+  ALLOW_DEBUG_OTP?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM?: string;
+  ALLOWED_ORIGINS?: string;
+};
 
-export const app = new Hono();
-app.use(
-  "*",
-  cors({
-    origin: ["http://localhost:5173"],
-    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+function parseCorsOrigins(allowed: string | undefined, fallback: string): string[] {
+  const raw = (allowed && allowed.length > 0 ? allowed : fallback)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return raw.length > 0 ? raw : [fallback];
+}
 
-app.post("/auth/otp/request", async (c) => {
-  try {
-    const body = await c.req.json();
-    return c.json(authUsecase.requestOtp(body.email), 202);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+function isProductionEnv(env: AppEnv | undefined): boolean {
+  if (!env) return false;
+  if (env.NODE_ENV === "production" || env.ENVIRONMENT === "production") return true;
+  return false;
+}
 
-app.post("/auth/otp/verify", async (c) => {
-  try {
-    const body = await c.req.json();
-    return c.json(authUsecase.verifyOtp(body.email, body.code), 200);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+export function createHonoApp(options: {
+  repo: AppRepository;
+  email: OtpEmailSender;
+  appEnv: AppEnv | undefined;
+}): Hono {
+  const { repo, email, appEnv } = options;
+  const prod = isProductionEnv(appEnv);
+  const allowDebugOtp =
+    !prod || (appEnv?.ALLOW_DEBUG_OTP === "1" || appEnv?.ALLOW_DEBUG_OTP === "true");
 
-app.get("/users/me", (c) => {
-  try {
-    const user = authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-    return c.json(user, 200);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+  const authUsecase = new AuthUsecase(repo, email, allowDebugOtp);
+  const coupleUsecase = new CoupleUsecase(repo);
 
-app.patch("/users/me", async (c) => {
-  try {
-    const user = authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-    const body = await c.req.json();
-    return c.json(coupleUsecase.updateProfile(user, body.displayName), 200);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+  const app = new Hono();
+  const allowedOrigins = parseCorsOrigins(
+    appEnv?.ALLOWED_ORIGINS,
+    "http://localhost:5173,http://127.0.0.1:5173",
+  );
+  app.use(
+    "*",
+    cors({
+      origin: allowedOrigins,
+      allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+      allowHeaders: ["Content-Type", "Authorization"],
+    }),
+  );
 
-app.post("/couples", (c) => {
-  try {
-    const user = authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-    return c.json(coupleUsecase.createCouple(user), 201);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+  app.post("/auth/otp/request", async (c) => {
+    try {
+      const body = await c.req.json();
+      return c.json(await authUsecase.requestOtp(body.email), 202);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
 
-app.get("/couples/me", (c) => {
-  try {
-    const user = authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-    return c.json(coupleUsecase.getMyCouple(user), 200);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+  app.post("/auth/otp/verify", async (c) => {
+    try {
+      const body = await c.req.json();
+      return c.json(await authUsecase.verifyOtp(body.email, body.code), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
 
-app.post("/couples/invites", (c) => {
-  try {
-    const user = authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-    return c.json(coupleUsecase.issueInvite(user), 201);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+  app.get("/users/me", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(user, 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
 
-app.post("/couples/invites/:code/accept", (c) => {
-  try {
-    const user = authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-    return c.json(coupleUsecase.acceptInvite(user, c.req.param("code")), 200);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+  app.patch("/users/me", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json();
+      return c.json(await coupleUsecase.updateProfile(user, body.displayName), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
 
-app.notFound((c) => c.json({ error: "not found", code: "not_found" }, 404));
+  app.post("/couples", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await coupleUsecase.createCouple(user), 201);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
 
-function handleError(c: any, err: unknown) {
+  app.get("/couples/me", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await coupleUsecase.getMyCouple(user), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/couples/invites", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await coupleUsecase.issueInvite(user), 201);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/couples/invites/:code/accept", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await coupleUsecase.acceptInvite(user, c.req.param("code")), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.notFound((c) => c.json({ error: "not found", code: "not_found" }, 404));
+
+  return app;
+}
+
+function handleError(
+  c: { json: (b: object, s: number) => Response },
+  err: unknown,
+) {
   if (err instanceof AppError) {
-    return c.json({ error: err.message, code: err.code }, err.status as 400 | 401 | 404 | 409 | 410);
+    return c.json(
+      { error: err.message, code: err.code },
+      err.status as 400 | 401 | 404 | 409 | 410 | 429 | 500 | 503,
+    );
   }
   const message = err instanceof Error ? err.message : String(err);
   return c.json({ error: "internal error", detail: message, code: "internal_error" }, 500);
+}
+
+export function buildDefaultInMemoryApp(): Hono {
+  const repo = new InMemoryRepository();
+  const appEnv: AppEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM: process.env.RESEND_FROM,
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+    ALLOW_DEBUG_OTP: process.env.ALLOW_DEBUG_OTP,
+  };
+  const email = createOtpEmailFromEnv({
+    ...process.env,
+    NODE_ENV: process.env.NODE_ENV,
+  });
+  return createHonoApp({ repo, email, appEnv });
 }

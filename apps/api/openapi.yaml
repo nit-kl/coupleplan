@@ -161,6 +161,9 @@ components:
         expiresInSec:
           type: integer
           example: 600
+        debugCode:
+          type: string
+          description: 開発/メール未接続/ALLOW_DEBUG 時のみ。本番＋本番配信利用時は返さない
     OtpVerifyRequest:
       type: object
       required: [email, code]

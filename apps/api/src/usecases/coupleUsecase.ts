@@ -1,6 +1,6 @@
 import { AppError } from "../domain/errors";
+import type { AppRepository } from "../domain/repository";
 import { Couple, CoupleView, Invite, User } from "../domain/types";
-import { InMemoryRepository } from "../infra/inMemoryRepository";
 
 function toCoupleView(couple: Couple): CoupleView {
   return {
@@ -15,19 +15,19 @@ function toCoupleView(couple: Couple): CoupleView {
 }
 
 export class CoupleUsecase {
-  constructor(private repo: InMemoryRepository) {}
+  constructor(private readonly repo: AppRepository) {}
 
-  updateProfile(user: User, displayNameRaw: unknown): User {
+  async updateProfile(user: User, displayNameRaw: unknown): Promise<User> {
     if (typeof displayNameRaw === "string") {
       user.displayName = displayNameRaw.trim() || user.displayName;
     }
     user.updatedAt = this.repo.nowIso();
-    this.repo.saveUser(user);
+    await this.repo.saveUser(user);
     return user;
   }
 
-  createCouple(owner: User): CoupleView {
-    if (this.repo.findCoupleByUserId(owner.id)) {
+  async createCouple(owner: User): Promise<CoupleView> {
+    if (await this.repo.findCoupleByUserId(owner.id)) {
       throw new AppError(409, "already_in_couple", "user already in couple");
     }
     const couple: Couple = {
@@ -36,18 +36,18 @@ export class CoupleUsecase {
       memberIds: [owner.id],
       createdAt: this.repo.nowIso(),
     };
-    this.repo.saveCouple(couple);
+    await this.repo.saveCouple(couple);
     return toCoupleView(couple);
   }
 
-  getMyCouple(user: User): CoupleView {
-    const couple = this.repo.findCoupleByUserId(user.id);
+  async getMyCouple(user: User): Promise<CoupleView> {
+    const couple = await this.repo.findCoupleByUserId(user.id);
     if (!couple) throw new AppError(404, "couple_not_found", "couple not found");
     return toCoupleView(couple);
   }
 
-  issueInvite(user: User): Invite {
-    const couple = this.repo.findCoupleByUserId(user.id);
+  async issueInvite(user: User): Promise<Invite> {
+    const couple = await this.repo.findCoupleByUserId(user.id);
     if (!couple) throw new AppError(404, "couple_not_found", "couple not found");
     const invite: Invite = {
       id: this.repo.newId("inv"),
@@ -56,30 +56,30 @@ export class CoupleUsecase {
       status: "issued",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     };
-    this.repo.saveInvite(invite);
+    await this.repo.saveInvite(invite);
     return invite;
   }
 
-  acceptInvite(user: User, code: string): CoupleView {
-    if (this.repo.findCoupleByUserId(user.id)) {
+  async acceptInvite(user: User, code: string): Promise<CoupleView> {
+    if (await this.repo.findCoupleByUserId(user.id)) {
       throw new AppError(409, "already_in_couple", "user already in couple");
     }
-    const invite = this.repo.getInviteByCode(code);
+    const invite = await this.repo.getInviteByCode(code);
     if (!invite) throw new AppError(404, "invite_not_found", "invite not found");
     if (invite.status !== "issued") throw new AppError(409, "invite_not_active", "invite not active");
     if (Date.parse(invite.expiresAt) < Date.now()) {
       invite.status = "expired";
-      this.repo.saveInvite(invite);
+      await this.repo.saveInvite(invite);
       throw new AppError(410, "invite_expired", "invite expired");
     }
-    const couple = this.repo.getCoupleById(invite.coupleId);
+    const couple = await this.repo.getCoupleById(invite.coupleId);
     if (!couple) throw new AppError(404, "couple_not_found", "couple not found");
     couple.memberIds.push(user.id);
     couple.status = "active";
-    this.repo.saveCouple(couple);
+    await this.repo.saveCouple(couple);
     invite.status = "used";
     invite.usedAt = this.repo.nowIso();
-    this.repo.saveInvite(invite);
+    await this.repo.saveInvite(invite);
     return toCoupleView(couple);
   }
 }

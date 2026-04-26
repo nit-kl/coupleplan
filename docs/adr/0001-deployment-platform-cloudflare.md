@@ -33,7 +33,11 @@
 - 週次集計ジョブ（ニンジャ）は冪等性を前提に設計が必要。
 - チーム内で `wrangler` ベースの開発手順を統一する必要がある。
 
+## 補足（2026-04-26 時点の実装）
+
+- API 向けは `apps/api/wrangler.toml` と Hono on Workers。CI/CD: [`.github/workflows/deploy-api.yml`](../../.github/workflows/deploy-api.yml)（`develop` → Staging、`main` → Production。D1 マイグレーション併用）。
+- Web（Pages）のデプロイはリポジトリ方針で未完了の場合がある（開発計画書 §2.2 参照）。
+
 ## 関連
 
 - [開発計画書.md](../開発計画書.md)
-- [デプロイ・ステージング方針案.md](../デプロイ・ステージング方針案.md)

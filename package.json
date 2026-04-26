@@ -18,6 +18,10 @@
     "web:dev": "vite --config apps/web/vite.config.ts",
     "web:build": "vite build --config apps/web/vite.config.ts",
     "web:preview": "vite preview --config apps/web/vite.config.ts",
+    "ci:pr": "npm run lint && npm run api:typecheck && npm run web:typecheck && npm run web:build && npm run api:smoke",
+    "api:dev:worker": "wrangler dev --config apps/api/wrangler.toml",
+    "api:deploy:staging": "wrangler deploy --config apps/api/wrangler.toml --env staging",
+    "api:deploy:production": "wrangler deploy --config apps/api/wrangler.toml --env production",
     "test": "npm run lint"
   },
   "repository": {
@@ -33,11 +37,13 @@
   },
   "homepage": "https://github.com/nit-kl/coupleplan#readme",
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260426.1",
     "@types/node": "^25.6.0",
     "htmlhint": "^1.9.2",
     "markdownlint-cli": "^0.48.0",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.85.0"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.0",

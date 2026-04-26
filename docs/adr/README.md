@@ -43,5 +43,6 @@
 - [0002-authentication-email-otp.md](./0002-authentication-email-otp.md)
 - [0003-core-entities-couple-invite.md](./0003-core-entities-couple-invite.md)
 - [0004-vite-hono-architecture.md](./0004-vite-hono-architecture.md)
+- [0005-database-d1.md](./0005-database-d1.md)
 
 引き続き、判断前に実装しないこと。

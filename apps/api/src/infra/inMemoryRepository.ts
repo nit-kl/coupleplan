@@ -1,78 +1,113 @@
-import * as crypto from "node:crypto";
+import type { AppRepository, AuthAuditEvent } from "../domain/repository";
 import { Couple, Invite, OtpRequestRecord, User } from "../domain/types";
+import { newId as genId, newOtpCode, newSessionToken } from "../lib/ids";
 
-export class InMemoryRepository {
+type OtpRow = OtpRequestRecord & { id: string; createdAtMs: number };
+
+export class InMemoryRepository implements AppRepository {
   private users = new Map<string, User>();
   private couples = new Map<string, Couple>();
   private invites = new Map<string, Invite>();
   private sessions = new Map<string, string>();
-  private otpRequests = new Map<string, OtpRequestRecord>();
+  private otpRequests = new Map<string, OtpRow>();
 
   nowIso(): string {
     return new Date().toISOString();
   }
 
   newId(prefix: string): string {
-    return `${prefix}_${crypto.randomBytes(4).toString("hex")}`;
+    return genId(prefix);
   }
 
-  newCode(length = 6): string {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let out = "";
-    for (let i = 0; i < length; i++) out += chars[Math.floor(Math.random() * chars.length)];
-    return out;
+  newCode(length: number): string {
+    return newOtpCode(length);
   }
 
-  putOtpRequest(id: string, record: OtpRequestRecord): void {
-    this.otpRequests.set(id, record);
+  newOtpCode(length: number): string {
+    return newOtpCode(length);
   }
 
-  findOtp(email: string, code: string): OtpRequestRecord | null {
-    return Array.from(this.otpRequests.values()).find((item) => item.email === email && item.code === code) ?? null;
+  async putOtpRequest(id: string, record: OtpRequestRecord, createdAtMs: number): Promise<void> {
+    this.otpRequests.set(id, { ...record, id, createdAtMs });
   }
 
-  findUserByEmail(email: string): User | null {
-    return Array.from(this.users.values()).find((u) => u.email === email) ?? null;
-  }
-
-  getUserById(id: string): User | null {
-    return this.users.get(id) ?? null;
-  }
-
-  saveUser(user: User): void {
-    this.users.set(user.id, user);
-  }
-
-  issueSession(userId: string): string {
-    const token = `tok_${crypto.randomBytes(16).toString("hex")}`;
-    this.sessions.set(token, userId);
-    return token;
-  }
-
-  resolveUserIdFromToken(token: string): string | null {
-    return this.sessions.get(token) ?? null;
-  }
-
-  saveCouple(couple: Couple): void {
-    this.couples.set(couple.id, couple);
-  }
-
-  getCoupleById(id: string): Couple | null {
-    return this.couples.get(id) ?? null;
-  }
-
-  findCoupleByUserId(userId: string): Couple | null {
-    for (const couple of this.couples.values()) {
-      if (couple.memberIds.includes(userId)) return couple;
+  async findOtp(
+    email: string,
+    code: string,
+  ): Promise<(OtpRequestRecord & { id: string }) | null> {
+    for (const row of this.otpRequests.values()) {
+      if (row.email === email && row.code === code) {
+        return { id: row.id, email: row.email, code: row.code, expiresAt: row.expiresAt };
+      }
     }
     return null;
   }
 
-  saveInvite(invite: Invite): void {
-    this.invites.set(invite.code, invite);
+  async deleteOtpRequest(id: string): Promise<void> {
+    this.otpRequests.delete(id);
   }
 
-  getInviteByCode(code: string): Invite | null {
-    return this.invites.get(code) ?? null;
+  async countOtpInWindowForEmail(email: string, sinceMs: number): Promise<number> {
+    return Array.from(this.otpRequests.values()).filter(
+      (r) => r.email === email && r.createdAtMs >= sinceMs,
+    ).length;
+  }
+
+  async findUserByEmail(email: string): Promise<User | null> {
+    return Array.from(this.users.values()).find((u) => u.email === email) ?? null;
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    return this.users.get(id) ?? null;
+  }
+
+  async saveUser(user: User): Promise<void> {
+    this.users.set(user.id, user);
+  }
+
+  async issueSession(userId: string): Promise<string> {
+    const token = newSessionToken();
+    this.sessions.set(token, userId);
+    return token;
+  }
+
+  async resolveUserIdFromToken(token: string): Promise<string | null> {
+    return this.sessions.get(token) ?? null;
+  }
+
+  async saveCouple(couple: Couple): Promise<void> {
+    this.couples.set(couple.id, { ...couple, memberIds: [...couple.memberIds] });
+  }
+
+  async getCoupleById(id: string): Promise<Couple | null> {
+    const c = this.couples.get(id);
+    return c ? { ...c, memberIds: [...c.memberIds] } : null;
+  }
+
+  async findCoupleByUserId(userId: string): Promise<Couple | null> {
+    for (const couple of this.couples.values()) {
+      if (couple.memberIds.includes(userId)) {
+        return { ...couple, memberIds: [...couple.memberIds] };
+      }
+    }
+    return null;
+  }
+
+  async saveInvite(invite: Invite): Promise<void> {
+    this.invites.set(invite.code, { ...invite });
+  }
+
+  async getInviteByCode(code: string): Promise<Invite | null> {
+    return this.invites.get(code) ? { ...this.invites.get(code)! } : null;
+  }
+
+  async appendAuthAudit(
+    _id: string,
+    _event: AuthAuditEvent,
+    _createdAtMs: number,
+    _email: string | null,
+    _detail: string | null,
+  ): Promise<void> {
+    // ローカルではログ過多を避けスキップ（必要なら console に出す）
   }
 }

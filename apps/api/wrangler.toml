@@ -1,0 +1,43 @@
+# P0-9: ローカル検証用の既定。本番/Staging では database_id / name を置換し、
+# `wrangler d1 create` で発行した ID を [env.staging] / [env.production] に分ける。
+
+name = "coupleplan-api"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+
+[observability]
+enabled = true
+
+[vars]
+ENVIRONMENT = "development"
+
+# ローカル: `cd apps/api && npx wrangler d1 create coupleplan-local` で得た ID を貼る
+[[d1_databases]]
+binding = "DB"
+database_name = "coupleplan-local"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Staging: develop 向け。database_id を Cloudflare ダッシュボード or wrangler 出力で上書き
+[env.staging]
+name = "coupleplan-api-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "coupleplan-staging"
+database_id = "00000000-0000-0000-0000-000000000001"
+
+# Production: main 向け
+[env.production]
+name = "coupleplan-api"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "coupleplan"
+database_id = "00000000-0000-0000-0000-000000000002"

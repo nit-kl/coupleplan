@@ -20,6 +20,14 @@
 - `docs` - 企画・計画・ADR
 - `prototype` - 本番前のUIプロトタイプ
 
+## 開発
+
+- フロント: `npm run web:dev`（Vite, `VITE_API_BASE` で API ベースURL、例 `http://127.0.0.1:8787`）
+- API（ローカル）: `npm run api:dev`（Node + インメモリ DB）
+- API（D1/Worker）: `npm run api:dev:worker`（`apps/api/wrangler.toml` でローカル D1。初回に `migrations/0001_initial.sql` を D1 へ `wrangler d1 migrations apply`）
+- 本番/Staging: Resend 利用時 `RESEND_API_KEY` / `RESEND_FROM`、CORS は `ALLOWED_ORIGINS`（カンマ区切り）を Cloudflare/ローカルで設定
+- 品質ゲート: `npm run ci:pr`
+
 ## 開発ルール（抜粋）
 
 - 設計判断は `docs/adr/` に ADR として記録する。
