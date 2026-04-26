@@ -26,6 +26,12 @@ export async function requestJson<TResponse>(
   };
   if (options?.accessToken) headers.Authorization = `Bearer ${options.accessToken}`;
 
+  if (!API_BASE_URL) {
+    throw new Error(
+      "VITE_API_BASE_URL が未設定です。Cloudflare Pages の「Settings」→「Environment variables」に、デプロイした Worker の URL（https://...workers.dev、末尾スラッシュなし）を Production（必要なら Preview も）で設定し、再デプロイしてください。",
+    );
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
