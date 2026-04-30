@@ -209,6 +209,18 @@ export class D1Repository implements AppRepository {
     return this.getCoupleById(row.cid);
   }
 
+  async removePendingSoloCoupleByUserId(userId: string): Promise<boolean> {
+    const couple = await this.findCoupleByUserId(userId);
+    if (!couple) return false;
+    if (couple.status !== "pending") return false;
+    if (couple.memberIds.length !== 1 || couple.memberIds[0] !== userId) return false;
+
+    await this.db.prepare(`DELETE FROM invites WHERE couple_id = ?`).bind(couple.id).run();
+    await this.db.prepare(`DELETE FROM couple_members WHERE couple_id = ?`).bind(couple.id).run();
+    await this.db.prepare(`DELETE FROM couples WHERE id = ?`).bind(couple.id).run();
+    return true;
+  }
+
   async saveInvite(invite: Invite): Promise<void> {
     await this.db
       .prepare(

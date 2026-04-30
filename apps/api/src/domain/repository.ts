@@ -28,6 +28,7 @@ export interface AppRepository {
   saveCouple(couple: Couple): Promise<void>;
   getCoupleById(id: string): Promise<Couple | null>;
   findCoupleByUserId(userId: string): Promise<Couple | null>;
+  removePendingSoloCoupleByUserId(userId: string): Promise<boolean>;
   saveInvite(invite: Invite): Promise<void>;
   getInviteByCode(code: string): Promise<Invite | null>;
   deleteAccountDataForUser(userId: string): Promise<{

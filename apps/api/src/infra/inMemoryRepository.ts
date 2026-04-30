@@ -114,6 +114,21 @@ export class InMemoryRepository implements AppRepository {
     return null;
   }
 
+  async removePendingSoloCoupleByUserId(userId: string): Promise<boolean> {
+    const couple = await this.findCoupleByUserId(userId);
+    if (!couple) return false;
+    if (couple.status !== "pending") return false;
+    if (couple.memberIds.length !== 1 || couple.memberIds[0] !== userId) return false;
+
+    for (const [code, invite] of Array.from(this.invites.entries())) {
+      if (invite.coupleId === couple.id) {
+        this.invites.delete(code);
+      }
+    }
+    this.couples.delete(couple.id);
+    return true;
+  }
+
   async saveInvite(invite: Invite): Promise<void> {
     this.invites.set(invite.code, { ...invite });
   }

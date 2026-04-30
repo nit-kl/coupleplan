@@ -140,16 +140,16 @@ async function run() {
     const tokenB = verifyB.data.accessToken;
     assert(tokenB, "token B missing");
 
-    let acceptInvite = await request(`/couples/invites/${encodeURIComponent(inviteCode)}/accept`, {
+    const preCreateCoupleB = await request("/couples", {
       method: "POST",
       headers: { Authorization: `Bearer ${tokenB}` },
     });
-    if (acceptInvite.status === 409) {
-      acceptInvite = await request("/couples/me", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${tokenB}` },
-      });
-    }
+    assert(preCreateCoupleB.status === 201, "pre-create pending couple for B failed");
+
+    const acceptInvite = await request(`/couples/invites/${encodeURIComponent(inviteCode)}/accept`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenB}` },
+    });
     assert(acceptInvite.status === 200, "accept invite failed");
     assert(acceptInvite.data.status === "active", "couple should be active after accept");
     assert(

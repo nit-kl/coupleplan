@@ -61,8 +61,16 @@ export class CoupleUsecase {
   }
 
   async acceptInvite(user: User, code: string): Promise<CoupleView> {
-    if (await this.repo.findCoupleByUserId(user.id)) {
-      throw new AppError(409, "already_in_couple", "user already in couple");
+    const myCouple = await this.repo.findCoupleByUserId(user.id);
+    if (myCouple) {
+      const canReplacePendingSolo =
+        myCouple.status === "pending" &&
+        myCouple.memberIds.length === 1 &&
+        myCouple.memberIds[0] === user.id;
+      if (!canReplacePendingSolo) {
+        throw new AppError(409, "already_in_couple", "user already in couple");
+      }
+      await this.repo.removePendingSoloCoupleByUserId(user.id);
     }
     const invite = await this.repo.getInviteByCode(code);
     if (!invite) throw new AppError(404, "invite_not_found", "invite not found");

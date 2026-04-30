@@ -48,5 +48,6 @@
 - [0007-account-withdrawal-deletion.md](./0007-account-withdrawal-deletion.md)
 - [0008-relogin-30days-local-session.md](./0008-relogin-30days-local-session.md)
 - [0009-httpOnly-refresh-token-auth.md](./0009-httpOnly-refresh-token-auth.md)
+- [0010-accept-invite-from-pending-solo-member.md](./0010-accept-invite-from-pending-solo-member.md)
 
 引き続き、判断前に実装しないこと。
