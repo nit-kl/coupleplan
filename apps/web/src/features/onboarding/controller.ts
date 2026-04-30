@@ -15,7 +15,6 @@ import {
   setInviteCode,
   setPairHeadlines,
   setProfileModeHint,
-  setStatus,
   showError,
   showScreen,
   valueOf,
@@ -35,6 +34,28 @@ function goToProfile(state: ReturnType<typeof createOnboardingState>, mode: Onbo
   showScreen("profile");
 }
 
+async function sendOtpForCurrentEmail(
+  state: ReturnType<typeof createOnboardingState>,
+  email: string,
+): Promise<void> {
+  await requestOtp(email);
+  state.setOtpRequestedEmail(email);
+  alert("認証コードを送信しました。メールの6桁コードを入力して進んでください。");
+}
+
+async function verifySessionWithManualOtp(
+  state: ReturnType<typeof createOnboardingState>,
+  email: string,
+): Promise<void> {
+  const otpCode = valueOf("otp-code");
+  if (!otpCode) throw new Error("認証コード（6桁）を入力してください。");
+  if (state.get().otpRequestedEmail !== email) {
+    throw new Error("先に「認証コードを送信」を押してください（メール変更後は再送が必要です）。");
+  }
+  const verified = await verifyOtp(email, otpCode);
+  state.setAccessToken(verified.accessToken);
+}
+
 /** 招待側: カップル作成 + 招待コード発行 */
 async function initializeSessionInviter(state: ReturnType<typeof createOnboardingState>): Promise<void> {
   const email = valueOf("email");
@@ -42,12 +63,7 @@ async function initializeSessionInviter(state: ReturnType<typeof createOnboardin
   if (!email || !displayName) {
     throw new Error("メールアドレスと表示名を入力してください");
   }
-
-  const otpRequested = await requestOtp(email);
-  state.setLastOtpCode(otpRequested.debugCode ?? "");
-
-  const verified = await verifyOtp(email, state.get().lastOtpCode);
-  state.setAccessToken(verified.accessToken);
+  await verifySessionWithManualOtp(state, email);
 
   await updateProfile(state.get().accessToken, displayName);
 
@@ -60,13 +76,6 @@ async function initializeSessionInviter(state: ReturnType<typeof createOnboardin
   const invite = await issueInvite(state.get().accessToken);
   state.setInviteCode(invite.code);
   setInviteCode(state.get().inviteCode);
-  setStatus({
-    flow: "inviter_ready",
-    email,
-    displayName,
-    inviteCode: state.get().inviteCode,
-    debugOtp: state.get().lastOtpCode,
-  });
 }
 
 /** 被招待側: プロフィールまで（カップル未作成） */
@@ -76,21 +85,9 @@ async function initializeSessionInvitee(state: ReturnType<typeof createOnboardin
   if (!email || !displayName) {
     throw new Error("メールアドレスと表示名を入力してください");
   }
-
-  const otpRequested = await requestOtp(email);
-  state.setLastOtpCode(otpRequested.debugCode ?? "");
-
-  const verified = await verifyOtp(email, state.get().lastOtpCode);
-  state.setAccessToken(verified.accessToken);
+  await verifySessionWithManualOtp(state, email);
 
   await updateProfile(state.get().accessToken, displayName);
-
-  setStatus({
-    flow: "invitee_ready",
-    email,
-    displayName,
-    debugOtp: state.get().lastOtpCode,
-  });
 }
 
 export function startOnboardingController(): void {
@@ -118,13 +115,25 @@ export function startOnboardingController(): void {
     }
   });
 
+  onClick("btn-send-otp", async () => {
+    try {
+      const email = valueOf("email");
+      if (!email) {
+        throw new Error("メールアドレスを入力してください");
+      }
+      await sendOtpForCurrentEmail(state, email);
+    } catch (error) {
+      showError(error);
+    }
+  });
+
   onClick("reissue-code", async () => {
     try {
       if (state.get().mode !== "inviter") return;
       const invite = await issueInvite(state.get().accessToken);
       state.setInviteCode(invite.code);
       setInviteCode(state.get().inviteCode);
-      setStatus({ flow: "reissued", inviteCode: state.get().inviteCode });
+      alert("招待コードを再発行しました。");
     } catch (error) {
       showError(error);
     }
@@ -140,7 +149,7 @@ export function startOnboardingController(): void {
     }
     try {
       await navigator.clipboard.writeText(code);
-      setStatus({ flow: "clipboard", copied: code });
+      alert("招待コードをコピーしました。");
     } catch {
       showError(new Error("コピーに失敗しました（ブラウザの許可を確認）"));
     }
@@ -150,17 +159,11 @@ export function startOnboardingController(): void {
     try {
       if (state.get().mode !== "inviter") return;
       const me = await getMyCouple(state.get().accessToken);
-      setStatus({ flow: "poll_couple", couple: me });
       if (me.status === "active" && me.members.length >= 2) {
         showScreen("done");
         return;
       }
-      setStatus({
-        flow: "waiting_partner",
-        coupleStatus: me.status,
-        members: me.members.length,
-        message: "まだ相手の参加が反映されていません。相手の端末でコード入力が終わるまで待ってから、もう一度「確認」してください。",
-      });
+      alert("まだ相手の参加が反映されていません。時間を置いてからもう一度確認してください。");
     } catch (error) {
       showError(error);
     }
@@ -175,7 +178,6 @@ export function startOnboardingController(): void {
         return;
       }
       const accepted = await acceptInvite(state.get().accessToken, code);
-      setStatus({ flow: "accepted", couple: accepted });
       if (accepted.status === "active") {
         showScreen("done");
       }

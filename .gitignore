@@ -7,3 +7,4 @@ dist/
 apps/web/.env
 apps/web/.env.local
 apps/api/.dev.vars
+apps/api/.wrangler/

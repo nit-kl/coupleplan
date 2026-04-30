@@ -5,13 +5,13 @@ export function createOnboardingState(): {
   setMode: (mode: OnboardingMode) => void;
   setAccessToken: (token: string) => void;
   setInviteCode: (code: string) => void;
-  setLastOtpCode: (code: string) => void;
+  setOtpRequestedEmail: (email: string) => void;
 } {
   const state: OnboardingState = {
     mode: "inviter",
     accessToken: "",
     inviteCode: "",
-    lastOtpCode: "",
+    otpRequestedEmail: "",
   };
 
   return {
@@ -25,8 +25,8 @@ export function createOnboardingState(): {
     setInviteCode: (code: string) => {
       state.inviteCode = code;
     },
-    setLastOtpCode: (code: string) => {
-      state.lastOtpCode = code;
+    setOtpRequestedEmail: (email: string) => {
+      state.otpRequestedEmail = email;
     },
   };
 }

@@ -19,12 +19,6 @@ export function setInviteCode(code: string): void {
   element.textContent = code || "CP----";
 }
 
-export function setStatus(data: unknown): void {
-  const element = document.getElementById("status");
-  if (!element) return;
-  element.textContent = `ステータス:\n${JSON.stringify(data, null, 2)}`;
-}
-
 export function onClick(id: string, handler: () => void | Promise<void>): void {
   document.getElementById(id)?.addEventListener("click", () => {
     void handler();
@@ -34,7 +28,6 @@ export function onClick(id: string, handler: () => void | Promise<void>): void {
 export function showError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   alert(message);
-  setStatus({ error: message });
 }
 
 export function applyPairMode(mode: OnboardingMode): void {

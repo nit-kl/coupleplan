@@ -9,7 +9,7 @@ export type OnboardingState = {
   mode: OnboardingMode;
   accessToken: string;
   inviteCode: string;
-  lastOtpCode: string;
+  otpRequestedEmail: string;
 };
 
 export type OtpRequestResponse = {

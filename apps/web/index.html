@@ -168,16 +168,6 @@
       color: #c97894;
     }
 
-    .status-box {
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      color: var(--ink-soft);
-      white-space: pre-wrap;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 0.75rem;
-    }
   </style>
 </head>
 <body>
@@ -212,6 +202,14 @@
           <label for="display-name">表示名</label>
           <input id="display-name" type="text" placeholder="ずんだ太郎" />
         </div>
+        <div class="field">
+          <label for="otp-code">認証コード（メールで受信）</label>
+          <input id="otp-code" type="text" placeholder="6桁コード" inputmode="numeric" autocomplete="one-time-code" />
+        </div>
+        <p class="hero-lead" style="font-size:0.88rem; margin:0.2rem 0 0.6rem;">
+          先に「認証コードを送信」を押してから、メールの6桁コードを入力してください。
+        </p>
+        <button id="btn-send-otp" class="btn-secondary" type="button">認証コードを送信</button>
         <button id="go-pair" class="btn-primary" type="button">次へ（ペア連携）</button>
       </div>
     </section>
@@ -243,7 +241,6 @@
           </div>
           <button id="btn-accept-invite" class="btn-primary" type="button">カップルに参加する</button>
         </div>
-        <div id="status" class="status-box">ステータス: 未接続</div>
       </div>
     </section>
 
@@ -259,8 +256,8 @@
     <section id="screen-home" class="screen" aria-label="ホーム">
       <div class="topbar"><span class="logo-pill">CouplePlan</span></div>
       <div class="card">
-        <h1 class="hero-title">P1-1 完了画面</h1>
-        <p class="hero-lead">この画面は会員・ペア連携UIの本実装として `apps/web` で管理します。</p>
+        <h1 class="hero-title">ホーム</h1>
+        <p class="hero-lead">登録と連携が完了しました。ここからふたりの機能を利用できます。</p>
       </div>
     </section>
   </div>
