@@ -32,7 +32,7 @@ name = "coupleplan-api-staging"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
-ALLOWED_ORIGINS = "https://stg-app.coupleplan.com,http://localhost:5173,http://127.0.0.1:5173"
+ALLOWED_ORIGINS = "https://develop.coupleplan-web.pages.dev,http://localhost:5173,http://127.0.0.1:5173"
 RESEND_FROM = "CouplePlan <noreply@coupleplan.com>"
 
 [[env.staging.d1_databases]]
@@ -46,7 +46,7 @@ name = "coupleplan-api"
 
 [env.production.vars]
 ENVIRONMENT = "production"
-ALLOWED_ORIGINS = "https://app.coupleplan.com,https://stg-app.coupleplan.com"
+ALLOWED_ORIGINS = "https://app.coupleplan.com,https://develop.coupleplan-web.pages.dev"
 RESEND_FROM = "CouplePlan <noreply@coupleplan.com>"
 
 [[env.production.d1_databases]]
