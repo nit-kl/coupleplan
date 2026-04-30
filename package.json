@@ -24,6 +24,8 @@
     "api:deploy:production": "wrangler deploy --config apps/api/wrangler.toml --env production",
     "d1:migrate:staging": "wrangler d1 migrations apply coupleplan-staging --remote --config apps/api/wrangler.toml --env staging",
     "d1:migrate:production": "wrangler d1 migrations apply coupleplan --remote --config apps/api/wrangler.toml --env production",
+    "p1:cleanup:testdata:staging": "node scripts/cleanup-p1-test-data.mjs --env staging",
+    "p1:cleanup:testdata:production": "node scripts/cleanup-p1-test-data.mjs --env production",
     "test": "npm run lint"
   },
   "repository": {
