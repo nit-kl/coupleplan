@@ -1,4 +1,4 @@
-import { screenIds, type OnboardingMode, type ScreenId } from "./types";
+import { screenIds, type CoupleMeResponse, type OnboardingMode, type ScreenId, type UserProfile } from "./types";
 
 export function showScreen(screen: ScreenId): void {
   screenIds.forEach((id) => {
@@ -11,6 +11,12 @@ export function showScreen(screen: ScreenId): void {
 
 export function valueOf(id: string): string {
   return (document.getElementById(id) as HTMLInputElement).value.trim();
+}
+
+export function setInputValue(id: string, value: string): void {
+  const element = document.getElementById(id) as HTMLInputElement | null;
+  if (!element) return;
+  element.value = value;
 }
 
 export function setInviteCode(code: string): void {
@@ -57,5 +63,25 @@ export function setPairHeadlines(mode: OnboardingMode): void {
       mode === "inviter"
         ? "共有が済んだら、相手の端末で参加してもらいましょう。有効化は下の「確認」で行います。"
         : "相手が先に登録し、送ってくれたコードを入力してカップルに参加します。";
+  }
+}
+
+export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeResponse | undefined): void {
+  const profile = document.getElementById("home-profile");
+  const coupleStatus = document.getElementById("home-couple-status");
+  if (profile) {
+    profile.textContent = user
+      ? `${user.displayName}（${user.email}）でログイン中です。`
+      : "ログイン情報を取得できませんでした。";
+  }
+  if (coupleStatus) {
+    if (!couple) {
+      coupleStatus.textContent = "まだカップル連携は完了していません。LPに戻って登録フローから連携してください。";
+      return;
+    }
+    coupleStatus.textContent =
+      couple.status === "active"
+        ? `カップル連携済みです（メンバー ${couple.members.length} 人）。`
+        : "カップルは作成済みですが、まだ相手の参加待ちです。";
   }
 }

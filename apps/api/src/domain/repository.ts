@@ -22,11 +22,18 @@ export interface AppRepository {
   saveUser(user: User): Promise<void>;
   issueSession(userId: string): Promise<string>;
   resolveUserIdFromToken(token: string): Promise<string | null>;
+  issueRefreshSession(userId: string, expiresAtMs: number): Promise<string>;
+  resolveUserIdFromRefreshToken(token: string, nowMs: number): Promise<string | null>;
+  revokeRefreshSession(token: string): Promise<void>;
   saveCouple(couple: Couple): Promise<void>;
   getCoupleById(id: string): Promise<Couple | null>;
   findCoupleByUserId(userId: string): Promise<Couple | null>;
   saveInvite(invite: Invite): Promise<void>;
   getInviteByCode(code: string): Promise<Invite | null>;
+  deleteAccountDataForUser(userId: string): Promise<{
+    deletedUserIds: string[];
+    deletedCoupleId?: string;
+  }>;
 
   appendAuthAudit(
     id: string,

@@ -87,13 +87,22 @@ async function run() {
     assert(otpA.status === 202, "OTP request A failed");
     assert(otpA.data.debugCode, "OTP code A missing（Staging なら平文 debugCode あり。本番+Resend では自動スモーク不可）");
 
-    const verifyA = await request("/auth/otp/verify", {
+    const verifyARaw = await fetch(`${BASE_URL}/auth/otp/verify`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: emailA, code: otpA.data.debugCode }),
     });
-    assert(verifyA.status === 200, "OTP verify A failed");
-    const tokenA = verifyA.data.accessToken;
+    const verifyA = await verifyARaw.json().catch(() => ({}));
+    assert(verifyARaw.status === 200, "OTP verify A failed");
+    const tokenA = verifyA.accessToken;
     assert(tokenA, "token A missing");
+    const refreshCookie = verifyARaw.headers.get("set-cookie");
+    assert(refreshCookie, "refresh cookie missing");
+    const refresh = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { Cookie: refreshCookie },
+    });
+    assert(refresh.status === 200, "refresh session failed");
 
     let coupleA = await request("/couples/me", {
       method: "GET",
@@ -147,6 +156,30 @@ async function run() {
       Array.isArray(acceptInvite.data.members) && acceptInvite.data.members.length === 2,
       "both partners should be in couple",
     );
+
+    const deleteAccount = await request("/users/me", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(deleteAccount.status === 200, "delete account failed");
+    assert(deleteAccount.data.deleted === true, "delete response should be marked deleted");
+    assert(
+      Array.isArray(deleteAccount.data.deletedUserIds) &&
+        deleteAccount.data.deletedUserIds.length === 2,
+      "couple withdrawal should delete both users",
+    );
+
+    const meAfterDeleteA = await request("/users/me", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(meAfterDeleteA.status === 401, "deleted user A token should be unauthorized");
+
+    const meAfterDeleteB = await request("/users/me", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenB}` },
+    });
+    assert(meAfterDeleteB.status === 401, "deleted partner B token should be unauthorized");
 
     console.log("P1-1 smoke test passed.");
   } finally {

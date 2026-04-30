@@ -2,8 +2,12 @@ import { HttpError } from "../../shared/api/httpClient";
 import {
   acceptInvite,
   createCouple,
+  deleteMe,
+  getMe,
   getMyCouple,
   issueInvite,
+  logoutSession,
+  refreshSession,
   requestOtp,
   updateProfile,
   verifyOtp,
@@ -12,6 +16,8 @@ import { createOnboardingState } from "./state";
 import {
   applyPairMode,
   onClick,
+  setHomeSummary,
+  setInputValue,
   setInviteCode,
   setPairHeadlines,
   setProfileModeHint,
@@ -26,6 +32,14 @@ function isAlreadyInCoupleError(error: unknown): boolean {
     return error.message.includes("already in couple");
   }
   return false;
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof HttpError && error.status === 404;
+}
+
+function isUnauthorizedError(error: unknown): boolean {
+  return error instanceof HttpError && error.status === 401;
 }
 
 function goToProfile(state: ReturnType<typeof createOnboardingState>, mode: OnboardingMode): void {
@@ -54,6 +68,28 @@ async function verifySessionWithManualOtp(
   }
   const verified = await verifyOtp(email, otpCode);
   state.setAccessToken(verified.accessToken);
+  state.setUser(verified.user);
+}
+
+async function loadCoupleOptional(accessToken: string): Promise<Awaited<ReturnType<typeof getMyCouple>> | undefined> {
+  try {
+    return await getMyCouple(accessToken);
+  } catch (error) {
+    if (isNotFoundError(error)) return undefined;
+    throw error;
+  }
+}
+
+async function refreshHome(state: ReturnType<typeof createOnboardingState>): Promise<void> {
+  const accessToken = state.get().accessToken;
+  if (!accessToken) {
+    throw new Error("ログイン情報がありません。もう一度ログインしてください。");
+  }
+  const [user, couple] = await Promise.all([getMe(accessToken), loadCoupleOptional(accessToken)]);
+  state.setUser(user);
+  state.setCouple(couple);
+  setHomeSummary(user, couple);
+  showScreen("home");
 }
 
 /** 招待側: カップル作成 + 招待コード発行 */
@@ -65,7 +101,8 @@ async function initializeSessionInviter(state: ReturnType<typeof createOnboardin
   }
   await verifySessionWithManualOtp(state, email);
 
-  await updateProfile(state.get().accessToken, displayName);
+  const user = await updateProfile(state.get().accessToken, displayName);
+  state.setUser(user);
 
   try {
     await createCouple(state.get().accessToken);
@@ -76,6 +113,7 @@ async function initializeSessionInviter(state: ReturnType<typeof createOnboardin
   const invite = await issueInvite(state.get().accessToken);
   state.setInviteCode(invite.code);
   setInviteCode(state.get().inviteCode);
+  state.setCouple(await getMyCouple(state.get().accessToken));
 }
 
 /** 被招待側: プロフィールまで（カップル未作成） */
@@ -87,7 +125,8 @@ async function initializeSessionInvitee(state: ReturnType<typeof createOnboardin
   }
   await verifySessionWithManualOtp(state, email);
 
-  await updateProfile(state.get().accessToken, displayName);
+  const user = await updateProfile(state.get().accessToken, displayName);
+  state.setUser(user);
 }
 
 export function startOnboardingController(): void {
@@ -95,9 +134,33 @@ export function startOnboardingController(): void {
 
   onClick("go-inviter", () => goToProfile(state, "inviter"));
   onClick("go-invitee", () => goToProfile(state, "invitee"));
+  onClick("go-login", () => showScreen("login"));
   onClick("back-start", () => showScreen("start"));
+  onClick("back-login-start", () => showScreen("start"));
   onClick("back-profile", () => showScreen("profile"));
-  onClick("go-home", () => showScreen("home"));
+  onClick("go-home", async () => {
+    try {
+      await refreshHome(state);
+    } catch (error) {
+      showError(error);
+    }
+  });
+  onClick("home-back-start", () => showScreen("start"));
+
+  void (async () => {
+    try {
+      const refreshed = await refreshSession();
+      state.setAccessToken(refreshed.accessToken);
+      state.setUser(refreshed.user);
+      await refreshHome(state);
+    } catch (error) {
+      if (isUnauthorizedError(error)) {
+        state.resetSession();
+        return;
+      }
+      showError(error);
+    }
+  })();
 
   onClick("go-pair", async () => {
     try {
@@ -122,6 +185,39 @@ export function startOnboardingController(): void {
         throw new Error("メールアドレスを入力してください");
       }
       await sendOtpForCurrentEmail(state, email);
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  onClick("btn-login-send-otp", async () => {
+    try {
+      const email = valueOf("login-email");
+      if (!email) {
+        throw new Error("メールアドレスを入力してください");
+      }
+      await requestOtp(email);
+      state.setOtpRequestedEmail(email);
+      alert("認証コードを送信しました。メールの6桁コードを入力してください。");
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  onClick("btn-login-verify", async () => {
+    try {
+      const email = valueOf("login-email");
+      const otpCode = valueOf("login-otp-code");
+      if (!email || !otpCode) {
+        throw new Error("メールアドレスと認証コードを入力してください");
+      }
+      if (state.get().otpRequestedEmail !== email) {
+        throw new Error("先に「認証コードを送信」を押してください（メール変更後は再送が必要です）。");
+      }
+      const verified = await verifyOtp(email, otpCode);
+      state.setAccessToken(verified.accessToken);
+      state.setUser(verified.user);
+      await refreshHome(state);
     } catch (error) {
       showError(error);
     }
@@ -179,8 +275,33 @@ export function startOnboardingController(): void {
       }
       const accepted = await acceptInvite(state.get().accessToken, code);
       if (accepted.status === "active") {
+        state.setCouple(accepted);
         showScreen("done");
       }
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  onClick("btn-withdraw", async () => {
+    try {
+      const accessToken = state.get().accessToken;
+      if (!accessToken) {
+        throw new Error("退会にはログインが必要です。");
+      }
+      const ok = confirm(
+        "退会すると、あなたと相手のカップル連携データ・招待コード・セッションを含む全データを削除します。元に戻せません。退会しますか？",
+      );
+      if (!ok) return;
+      await deleteMe(accessToken);
+      await logoutSession().catch(() => undefined);
+      state.resetSession();
+      setInviteCode("");
+      setInputValue("otp-code", "");
+      setInputValue("login-otp-code", "");
+      setHomeSummary(undefined, undefined);
+      alert("退会が完了しました。全データを削除しました。");
+      showScreen("start");
     } catch (error) {
       showError(error);
     }

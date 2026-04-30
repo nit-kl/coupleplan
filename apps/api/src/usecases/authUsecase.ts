@@ -4,6 +4,7 @@ import { User } from "../domain/types";
 import type { OtpEmailSender } from "../infra/email/otpEmail";
 
 const OTP_TTL_SEC = 600;
+const REFRESH_TTL_SEC = 30 * 24 * 60 * 60;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_MAX_IN_WINDOW = 5;
 
@@ -68,7 +69,7 @@ export class AuthUsecase {
   async verifyOtp(
     emailRaw: unknown,
     codeRaw: unknown,
-  ): Promise<{ accessToken: string; user: User }> {
+  ): Promise<{ accessToken: string; refreshToken: string; refreshExpiresInSec: number; user: User }> {
     if (typeof emailRaw !== "string" || typeof codeRaw !== "string") {
       throw new AppError(400, "bad_request", "email and code are required");
     }
@@ -96,8 +97,28 @@ export class AuthUsecase {
       await this.repo.saveUser(user);
     }
     const accessToken = await this.repo.issueSession(user.id);
+    const refreshToken = await this.repo.issueRefreshSession(user.id, Date.now() + REFRESH_TTL_SEC * 1000);
     await this.repo.deleteOtpRequest(otp.id);
+    return { accessToken, refreshToken, refreshExpiresInSec: REFRESH_TTL_SEC, user };
+  }
+
+  async refreshSessionFromToken(
+    refreshTokenRaw: unknown,
+  ): Promise<{ accessToken: string; user: User }> {
+    if (typeof refreshTokenRaw !== "string" || !refreshTokenRaw) {
+      throw new AppError(401, "unauthorized", "unauthorized");
+    }
+    const userId = await this.repo.resolveUserIdFromRefreshToken(refreshTokenRaw, Date.now());
+    if (!userId) throw new AppError(401, "unauthorized", "unauthorized");
+    const user = await this.repo.getUserById(userId);
+    if (!user) throw new AppError(401, "unauthorized", "unauthorized");
+    const accessToken = await this.repo.issueSession(user.id);
     return { accessToken, user };
+  }
+
+  async revokeRefreshSession(refreshTokenRaw: unknown): Promise<void> {
+    if (typeof refreshTokenRaw !== "string" || !refreshTokenRaw) return;
+    await this.repo.revokeRefreshSession(refreshTokenRaw);
   }
 
   async resolveUserFromAuthHeader(authHeader: string | undefined): Promise<User> {

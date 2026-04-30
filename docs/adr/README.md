@@ -45,5 +45,8 @@
 - [0004-vite-hono-architecture.md](./0004-vite-hono-architecture.md)
 - [0005-database-d1.md](./0005-database-d1.md)
 - [0006-custom-domain-dns-strategy.md](./0006-custom-domain-dns-strategy.md)
+- [0007-account-withdrawal-deletion.md](./0007-account-withdrawal-deletion.md)
+- [0008-relogin-30days-local-session.md](./0008-relogin-30days-local-session.md)
+- [0009-httpOnly-refresh-token-auth.md](./0009-httpOnly-refresh-token-auth.md)
 
 引き続き、判断前に実装しないこと。

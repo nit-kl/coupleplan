@@ -9,6 +9,7 @@ export class InMemoryRepository implements AppRepository {
   private couples = new Map<string, Couple>();
   private invites = new Map<string, Invite>();
   private sessions = new Map<string, string>();
+  private refreshSessions = new Map<string, { userId: string; expiresAtMs: number }>();
   private otpRequests = new Map<string, OtpRow>();
 
   nowIso(): string {
@@ -75,6 +76,26 @@ export class InMemoryRepository implements AppRepository {
     return this.sessions.get(token) ?? null;
   }
 
+  async issueRefreshSession(userId: string, expiresAtMs: number): Promise<string> {
+    const token = newSessionToken();
+    this.refreshSessions.set(token, { userId, expiresAtMs });
+    return token;
+  }
+
+  async resolveUserIdFromRefreshToken(token: string, nowMs: number): Promise<string | null> {
+    const row = this.refreshSessions.get(token);
+    if (!row) return null;
+    if (row.expiresAtMs <= nowMs) {
+      this.refreshSessions.delete(token);
+      return null;
+    }
+    return row.userId;
+  }
+
+  async revokeRefreshSession(token: string): Promise<void> {
+    this.refreshSessions.delete(token);
+  }
+
   async saveCouple(couple: Couple): Promise<void> {
     this.couples.set(couple.id, { ...couple, memberIds: [...couple.memberIds] });
   }
@@ -99,6 +120,45 @@ export class InMemoryRepository implements AppRepository {
 
   async getInviteByCode(code: string): Promise<Invite | null> {
     return this.invites.get(code) ? { ...this.invites.get(code)! } : null;
+  }
+
+  async deleteAccountDataForUser(userId: string): Promise<{
+    deletedUserIds: string[];
+    deletedCoupleId?: string;
+  }> {
+    const couple = await this.findCoupleByUserId(userId);
+    const deletedUserIds = couple ? [...couple.memberIds] : [userId];
+
+    for (const token of Array.from(this.sessions.keys())) {
+      const sessionUserId = this.sessions.get(token);
+      if (sessionUserId && deletedUserIds.includes(sessionUserId)) {
+        this.sessions.delete(token);
+      }
+    }
+    for (const token of Array.from(this.refreshSessions.keys())) {
+      const session = this.refreshSessions.get(token);
+      if (session && deletedUserIds.includes(session.userId)) {
+        this.refreshSessions.delete(token);
+      }
+    }
+
+    if (couple) {
+      for (const [code, invite] of Array.from(this.invites.entries())) {
+        if (invite.coupleId === couple.id) {
+          this.invites.delete(code);
+        }
+      }
+      this.couples.delete(couple.id);
+    }
+
+    for (const deletedUserId of deletedUserIds) {
+      this.users.delete(deletedUserId);
+    }
+
+    return {
+      deletedUserIds,
+      deletedCoupleId: couple?.id,
+    };
   }
 
   async appendAuthAudit(

@@ -123,6 +123,41 @@ export class D1Repository implements AppRepository {
     return row?.uid ?? null;
   }
 
+  async issueRefreshSession(userId: string, expiresAtMs: number): Promise<string> {
+    const token = newSessionToken();
+    const nowMs = Date.now();
+    await this.db
+      .prepare(
+        `INSERT INTO refresh_sessions (token, user_id, expires_at_ms, created_at_ms, last_used_at_ms) VALUES (?, ?, ?, ?, ?)`,
+      )
+      .bind(token, userId, expiresAtMs, nowMs, nowMs)
+      .run();
+    return token;
+  }
+
+  async resolveUserIdFromRefreshToken(token: string, nowMs: number): Promise<string | null> {
+    const row = await this.db
+      .prepare(
+        `SELECT user_id AS uid, expires_at_ms AS expiresAtMs FROM refresh_sessions WHERE token = ?`,
+      )
+      .bind(token)
+      .first<{ uid: string; expiresAtMs: number }>();
+    if (!row) return null;
+    if (row.expiresAtMs <= nowMs) {
+      await this.revokeRefreshSession(token);
+      return null;
+    }
+    await this.db
+      .prepare(`UPDATE refresh_sessions SET last_used_at_ms = ? WHERE token = ?`)
+      .bind(nowMs, token)
+      .run();
+    return row.uid;
+  }
+
+  async revokeRefreshSession(token: string): Promise<void> {
+    await this.db.prepare(`DELETE FROM refresh_sessions WHERE token = ?`).bind(token).run();
+  }
+
   async saveCouple(couple: Couple): Promise<void> {
     const u = this.nowIso();
     await this.db
@@ -214,6 +249,40 @@ export class D1Repository implements AppRepository {
       status: row.status,
       expiresAt: row.expiresAt,
       usedAt: row.usedAt ?? undefined,
+    };
+  }
+
+  async deleteAccountDataForUser(userId: string): Promise<{
+    deletedUserIds: string[];
+    deletedCoupleId?: string;
+  }> {
+    const couple = await this.findCoupleByUserId(userId);
+    const deletedUserIds = couple ? [...couple.memberIds] : [userId];
+    const placeholders = deletedUserIds.map(() => "?").join(", ");
+
+    await this.db
+      .prepare(`DELETE FROM sessions WHERE user_id IN (${placeholders})`)
+      .bind(...deletedUserIds)
+      .run();
+    await this.db
+      .prepare(`DELETE FROM refresh_sessions WHERE user_id IN (${placeholders})`)
+      .bind(...deletedUserIds)
+      .run();
+
+    if (couple) {
+      await this.db.prepare(`DELETE FROM invites WHERE couple_id = ?`).bind(couple.id).run();
+      await this.db.prepare(`DELETE FROM couple_members WHERE couple_id = ?`).bind(couple.id).run();
+      await this.db.prepare(`DELETE FROM couples WHERE id = ?`).bind(couple.id).run();
+    }
+
+    await this.db
+      .prepare(`DELETE FROM users WHERE id IN (${placeholders})`)
+      .bind(...deletedUserIds)
+      .run();
+
+    return {
+      deletedUserIds,
+      deletedCoupleId: couple?.id,
     };
   }
 

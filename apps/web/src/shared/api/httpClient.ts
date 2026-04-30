@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "../config/env";
 
-type HttpMethod = "GET" | "POST" | "PATCH";
+type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 export class HttpError extends Error {
   constructor(
@@ -35,6 +35,7 @@ export async function requestJson<TResponse>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
+    credentials: "include",
     body: options?.body ? JSON.stringify(options.body) : undefined,
   });
 

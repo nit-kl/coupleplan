@@ -1,9 +1,11 @@
 import { Hono } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { AppError } from "./domain/errors";
 import { createOtpEmailFromEnv, type OtpEmailSender } from "./infra/email/otpEmail";
 import { InMemoryRepository } from "./infra/inMemoryRepository";
 import type { AppRepository } from "./domain/repository";
+import { AccountUsecase } from "./usecases/accountUsecase";
 import { AuthUsecase } from "./usecases/authUsecase";
 import { CoupleUsecase } from "./usecases/coupleUsecase";
 
@@ -15,6 +17,7 @@ export type AppEnv = {
   RESEND_FROM?: string;
   ALLOWED_ORIGINS?: string;
 };
+const REFRESH_COOKIE_NAME = "cp_refresh";
 
 type OriginRule =
   | { kind: "exact"; value: string }
@@ -66,6 +69,26 @@ function isProductionEnv(env: AppEnv | undefined): boolean {
   return false;
 }
 
+function setRefreshCookie(
+  c: { header: (name: string, value: string, options?: { append?: boolean }) => void },
+  refreshToken: string,
+  prod: boolean,
+): void {
+  setCookie(c as never, REFRESH_COOKIE_NAME, refreshToken, {
+    httpOnly: true,
+    secure: prod,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 30 * 24 * 60 * 60,
+  });
+}
+
+function clearRefreshCookie(
+  c: { header: (name: string, value: string, options?: { append?: boolean }) => void },
+): void {
+  deleteCookie(c as never, REFRESH_COOKIE_NAME, { path: "/" });
+}
+
 export function createHonoApp(options: {
   repo: AppRepository;
   email: OtpEmailSender;
@@ -77,6 +100,7 @@ export function createHonoApp(options: {
     !prod || (appEnv?.ALLOW_DEBUG_OTP === "1" || appEnv?.ALLOW_DEBUG_OTP === "true");
 
   const authUsecase = new AuthUsecase(repo, email, allowDebugOtp);
+  const accountUsecase = new AccountUsecase(repo);
   const coupleUsecase = new CoupleUsecase(repo);
 
   const app = new Hono();
@@ -88,7 +112,8 @@ export function createHonoApp(options: {
     "*",
     cors({
       origin: (origin) => matchCorsOrigin(origin, allowedOrigins) ?? "",
-      allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+      credentials: true,
+      allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization"],
     }),
   );
@@ -105,7 +130,38 @@ export function createHonoApp(options: {
   app.post("/auth/otp/verify", async (c) => {
     try {
       const body = await c.req.json();
-      return c.json(await authUsecase.verifyOtp(body.email, body.code), 200);
+      const verified = await authUsecase.verifyOtp(body.email, body.code);
+      setRefreshCookie(c, verified.refreshToken, prod);
+      return c.json(
+        {
+          accessToken: verified.accessToken,
+          user: verified.user,
+          refreshExpiresInSec: verified.refreshExpiresInSec,
+        },
+        200,
+      );
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/auth/refresh", async (c) => {
+    try {
+      const refreshToken = getCookie(c, REFRESH_COOKIE_NAME);
+      const refreshed = await authUsecase.refreshSessionFromToken(refreshToken);
+      return c.json(refreshed, 200);
+    } catch (err) {
+      clearRefreshCookie(c);
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/auth/logout", async (c) => {
+    try {
+      const refreshToken = getCookie(c, REFRESH_COOKIE_NAME);
+      await authUsecase.revokeRefreshSession(refreshToken);
+      clearRefreshCookie(c);
+      return c.json({ ok: true }, 200);
     } catch (err) {
       return handleError(c, err);
     }
@@ -125,6 +181,17 @@ export function createHonoApp(options: {
       const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
       const body = await c.req.json();
       return c.json(await coupleUsecase.updateProfile(user, body.displayName), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.delete("/users/me", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const result = await accountUsecase.withdraw(user);
+      clearRefreshCookie(c);
+      return c.json(result, 200);
     } catch (err) {
       return handleError(c, err);
     }

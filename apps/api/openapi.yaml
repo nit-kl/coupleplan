@@ -47,6 +47,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthSession"
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token from HttpOnly refresh cookie
+      responses:
+        "200":
+          description: Session refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke refresh token and clear auth cookie
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
   /users/me:
     get:
       tags: [users]
@@ -78,6 +104,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+    delete:
+      tags: [users]
+      summary: Withdraw current account and delete couple-scoped data
+      description: Deletes the authenticated user. If the user belongs to a couple, all users and shared data in that couple are deleted.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Account data deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDeletion"
   /couples:
     post:
       tags: [couples]
@@ -181,6 +220,9 @@ components:
       properties:
         accessToken:
           type: string
+        refreshExpiresInSec:
+          type: integer
+          description: Returned on OTP verify when refresh cookie is issued.
         user:
           $ref: "#/components/schemas/User"
     User:
@@ -201,6 +243,19 @@ components:
       type: object
       properties:
         displayName:
+          type: string
+    AccountDeletion:
+      type: object
+      required: [deleted, deletedUserIds]
+      properties:
+        deleted:
+          type: boolean
+          enum: [true]
+        deletedUserIds:
+          type: array
+          items:
+            type: string
+        deletedCoupleId:
           type: string
     Couple:
       type: object

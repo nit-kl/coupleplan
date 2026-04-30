@@ -146,7 +146,22 @@
       margin: 0.6rem 0 1rem;
     }
 
-    .btn-primary, .btn-secondary {
+    .feature-list {
+      display: grid;
+      gap: 0.65rem;
+      margin: 1rem 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feature-list li {
+      background: rgba(255, 233, 239, 0.72);
+      border: 1px solid #f4d3dc;
+      border-radius: 14px;
+      padding: 0.8rem;
+      line-height: 1.55;
+    }
+
+    .btn-primary, .btn-secondary, .btn-danger {
       width: 100%;
       border-radius: 14px;
       padding: 0.9rem 1rem;
@@ -167,6 +182,11 @@
       background: #fff;
       color: #c97894;
     }
+    .btn-danger {
+      border: 1px solid #d77f7f;
+      background: #fff6f6;
+      color: #b44949;
+    }
 
   </style>
 </head>
@@ -174,13 +194,19 @@
   <div class="app">
     <section id="screen-start" class="screen active" aria-label="登録開始">
       <div class="topbar"><span class="logo-pill">CouplePlan</span></div>
-      <h1 class="hero-title">カップルで始める<br />登録フロー</h1>
-      <p class="hero-lead">ふたりで別アカウントのため、<strong>役割</strong>を選んでから進みます（実機ではブラウザを2つに分けてもOK）。</p>
+      <h1 class="hero-title">ふたりの予定づくりを<br />軽く、楽しく</h1>
+      <p class="hero-lead">CouplePlanは、カップルで別アカウントを作り、招待コードで安全につながるMVPです。メール認証だけで登録・再ログインできます。</p>
+      <ul class="feature-list">
+        <li><strong>メールOTPで開始</strong><br />パスワード不要。6桁コードで初回登録と再ログインを兼ねます。</li>
+        <li><strong>招待コードでペア連携</strong><br />先に登録した人がコードを共有し、相手が参加します。</li>
+        <li><strong>退会時は全データ削除</strong><br />ホームから、ふたりの連携データをまとめて削除できます。</li>
+      </ul>
       <div class="card">
         <div class="stepper"><span class="on">1</span><span>2</span><span>3</span><span>4</span></div>
-        <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">どちらに当てはまりますか？</p>
+        <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">初めての方は役割を選んで登録へ進みます。</p>
         <button id="go-inviter" class="btn-primary" type="button">先に登録（招待コードを出す側）</button>
         <button id="go-invitee" class="btn-secondary" type="button">あとから参加（コードを受け取った側）</button>
+        <button id="go-login" class="btn-secondary" type="button">登録済みの方はこちら（再ログイン）</button>
       </div>
     </section>
 
@@ -211,6 +237,28 @@
         </p>
         <button id="btn-send-otp" class="btn-secondary" type="button">認証コードを送信</button>
         <button id="go-pair" class="btn-primary" type="button">次へ（ペア連携）</button>
+      </div>
+    </section>
+
+    <section id="screen-login" class="screen" aria-label="再ログイン">
+      <div class="topbar">
+        <button id="back-login-start" class="btn-back" type="button">←</button>
+        <span class="logo-pill">再ログイン</span>
+        <span style="width:44px"></span>
+      </div>
+      <h1 class="hero-title">メール認証で戻る</h1>
+      <p class="hero-lead">登録済みのメールアドレスへ6桁コードを送信し、ホームへ戻ります。</p>
+      <div class="card">
+        <div class="field">
+          <label for="login-email">メールアドレス</label>
+          <input id="login-email" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="login-otp-code">認証コード（メールで受信）</label>
+          <input id="login-otp-code" type="text" placeholder="6桁コード" inputmode="numeric" autocomplete="one-time-code" />
+        </div>
+        <button id="btn-login-send-otp" class="btn-secondary" type="button">認証コードを送信</button>
+        <button id="btn-login-verify" class="btn-primary" type="button">ログインしてホームへ</button>
       </div>
     </section>
 
@@ -257,7 +305,10 @@
       <div class="topbar"><span class="logo-pill">CouplePlan</span></div>
       <div class="card">
         <h1 class="hero-title">ホーム</h1>
-        <p class="hero-lead">登録と連携が完了しました。ここからふたりの機能を利用できます。</p>
+        <p id="home-profile" class="hero-lead">ログイン中です。</p>
+        <p id="home-couple-status" class="hero-lead">カップル連携状態を確認しています。</p>
+        <button id="home-back-start" class="btn-secondary" type="button">LPに戻る</button>
+        <button id="btn-withdraw" class="btn-danger" type="button">退会して全データを削除</button>
       </div>
     </section>
   </div>
