@@ -17,6 +17,7 @@ enabled = true
 
 [vars]
 ENVIRONMENT = "development"
+ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
 # ローカル: wrangler d1 create coupleplan-local の UUID
 [[d1_databases]]
@@ -30,8 +31,7 @@ name = "coupleplan-api-staging"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
-# 例: ALLOWED_ORIGINS = "https://<pages>.pages.dev,http://localhost:5173"
-# 未設定時の API デフォルトは localhost CORS。Pages から触る前に必ず Worker に設定。
+ALLOWED_ORIGINS = "https://stg-app.coupleplan.com,http://localhost:5173,http://127.0.0.1:5173"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -44,6 +44,7 @@ name = "coupleplan-api"
 
 [env.production.vars]
 ENVIRONMENT = "production"
+ALLOWED_ORIGINS = "https://app.coupleplan.com,https://stg-app.coupleplan.com"
 
 [[env.production.d1_databases]]
 binding = "DB"
