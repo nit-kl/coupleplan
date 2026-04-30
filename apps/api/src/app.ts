@@ -36,18 +36,23 @@ function parseCorsOrigins(allowed: string | undefined, fallback: string): Origin
   return list;
 }
 
+function normalizeOrigin(value: string): string {
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
 function matchCorsOrigin(origin: string, rules: OriginRule[]): string | null {
+  const normalizedOrigin = normalizeOrigin(origin);
   for (const rule of rules) {
     if (rule.kind === "exact") {
-      if (origin === rule.value) return origin;
+      if (normalizedOrigin === normalizeOrigin(rule.value)) return normalizedOrigin;
       continue;
     }
     try {
-      const parsed = new URL(origin);
+      const parsed = new URL(normalizedOrigin);
       const protocol = parsed.protocol.replace(":", "").toLowerCase();
       const host = parsed.hostname.toLowerCase();
       if (protocol !== rule.protocol) continue;
-      if (host === rule.suffix || host.endsWith(`.${rule.suffix}`)) return origin;
+      if (host === rule.suffix || host.endsWith(`.${rule.suffix}`)) return normalizedOrigin;
     } catch {
       continue;
     }
