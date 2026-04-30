@@ -16,12 +16,43 @@ export type AppEnv = {
   ALLOWED_ORIGINS?: string;
 };
 
-function parseCorsOrigins(allowed: string | undefined, fallback: string): string[] {
+type OriginRule =
+  | { kind: "exact"; value: string }
+  | { kind: "wildcard"; protocol: string; suffix: string };
+
+function parseCorsOrigins(allowed: string | undefined, fallback: string): OriginRule[] {
   const raw = (allowed && allowed.length > 0 ? allowed : fallback)
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return raw.length > 0 ? raw : [fallback];
+  const list = (raw.length > 0 ? raw : [fallback]).flatMap((item): OriginRule[] => {
+    if (item.includes("*")) {
+      const matched = item.match(/^(https?):\/\/\*\.([a-z0-9.-]+)$/i);
+      if (!matched) return [];
+      return [{ kind: "wildcard", protocol: matched[1]!.toLowerCase(), suffix: matched[2]!.toLowerCase() }];
+    }
+    return [{ kind: "exact", value: item }];
+  });
+  return list;
+}
+
+function matchCorsOrigin(origin: string, rules: OriginRule[]): string | null {
+  for (const rule of rules) {
+    if (rule.kind === "exact") {
+      if (origin === rule.value) return origin;
+      continue;
+    }
+    try {
+      const parsed = new URL(origin);
+      const protocol = parsed.protocol.replace(":", "").toLowerCase();
+      const host = parsed.hostname.toLowerCase();
+      if (protocol !== rule.protocol) continue;
+      if (host === rule.suffix || host.endsWith(`.${rule.suffix}`)) return origin;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function isProductionEnv(env: AppEnv | undefined): boolean {
@@ -46,12 +77,12 @@ export function createHonoApp(options: {
   const app = new Hono();
   const allowedOrigins = parseCorsOrigins(
     appEnv?.ALLOWED_ORIGINS,
-    "http://localhost:5173,http://127.0.0.1:5173",
+    "http://localhost:5173,http://127.0.0.1:5173,https://*.pages.dev",
   );
   app.use(
     "*",
     cors({
-      origin: allowedOrigins,
+      origin: (origin) => matchCorsOrigin(origin, allowedOrigins) ?? "",
       allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization"],
     }),
