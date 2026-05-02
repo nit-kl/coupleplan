@@ -1,0 +1,70 @@
+import { getAccessToken } from "../../shared/session/sessionStore";
+import { getNinjaMissions, getNinjaWeek, postNinjaLog } from "./api";
+import type { NinjaMissionCard } from "./types";
+import { renderNinjaMissions, renderNinjaWeek, showNinjaScreen } from "./view";
+
+function ensureToken(): string {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("ログインが必要です。ホームで再ログインしてください。");
+  }
+  return token;
+}
+
+export function startNinjaController(): void {
+  let missionsCache: NinjaMissionCard[] = [];
+
+  async function loadAll(): Promise<void> {
+    const token = ensureToken();
+    const [{ missions }, week] = await Promise.all([getNinjaMissions(token), getNinjaWeek(token)]);
+    missionsCache = missions;
+    renderNinjaMissions(missions);
+    renderNinjaWeek(week);
+  }
+
+  function bindClick(id: string, handler: () => void | Promise<void>): void {
+    document.getElementById(id)?.addEventListener("click", () => {
+      void handler();
+    });
+  }
+
+  bindClick("go-ninja", async () => {
+    try {
+      showNinjaScreen();
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  bindClick("ninja-back-home", () => {
+    document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+    document.getElementById("screen-home")?.classList.add("active");
+    window.scrollTo(0, 0);
+  });
+
+  bindClick("ninja-refresh", async () => {
+    try {
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  document.getElementById("ninja-mission-list")?.addEventListener("click", async (ev) => {
+    const target = ev.target as HTMLElement;
+    const btn = target.closest?.("[data-mission-id]") as HTMLButtonElement | null;
+    if (!btn) return;
+    const missionId = btn.dataset.missionId;
+    if (!missionId) return;
+    try {
+      const token = ensureToken();
+      await postNinjaLog(token, missionId);
+      const week = await getNinjaWeek(token);
+      renderNinjaWeek(week);
+      if (missionsCache.length > 0) renderNinjaMissions(missionsCache);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  });
+}

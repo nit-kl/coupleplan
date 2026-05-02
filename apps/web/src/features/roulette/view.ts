@@ -5,6 +5,7 @@ const SCREEN_IDS: RouletteScreen[] = ["swipe", "wait", "match", "spin", "result"
 const NON_ROULETTE_SCREEN_IDS = ["start", "profile", "login", "pair", "done", "home"];
 
 export function showRouletteScreen(screen: RouletteScreen): void {
+  document.getElementById("screen-ninja")?.classList.remove("active");
   for (const id of NON_ROULETTE_SCREEN_IDS) {
     const el = document.getElementById(`screen-${id}`);
     if (el) el.classList.remove("active");

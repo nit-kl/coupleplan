@@ -1,6 +1,8 @@
 import type {
   Couple,
   Invite,
+  NinjaLog,
+  NinjaWeeklySummary,
   OtpRequestRecord,
   RouletteResult,
   RouletteSession,
@@ -69,4 +71,10 @@ export interface AppRepository {
 
   saveRouletteResult(result: RouletteResult): Promise<void>;
   getRouletteResultBySession(sessionId: string): Promise<RouletteResult | null>;
+
+  insertNinjaLog(log: NinjaLog): Promise<void>;
+  listNinjaLogsInRange(coupleId: string, startIso: string, endIso: string): Promise<NinjaLog[]>;
+  getNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<NinjaWeeklySummary | null>;
+  upsertNinjaWeeklySummary(summary: NinjaWeeklySummary): Promise<void>;
+  listActiveCoupleIds(): Promise<string[]>;
 }

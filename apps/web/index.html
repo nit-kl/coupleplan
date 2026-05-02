@@ -287,6 +287,27 @@
       font-size: 0.95rem;
     }
 
+    .ninja-mission-grid {
+      display: grid;
+      gap: 0.6rem;
+    }
+    .ninja-mission-btn {
+      text-align: left;
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 0.85rem 1rem;
+      font-family: inherit;
+      cursor: pointer;
+      line-height: 1.45;
+    }
+    .ninja-mission-btn:active {
+      transform: scale(0.99);
+    }
+    .ninja-mission-btn .nj-emoji { font-size: 1.6rem; margin-right: 0.5rem; vertical-align: middle; }
+    .ninja-mission-btn .nj-meta { color: var(--ink-soft); font-size: 0.85rem; margin-top: 0.2rem; }
+
   </style>
 </head>
 <body>
@@ -407,8 +428,29 @@
         <p id="home-profile" class="hero-lead">ログイン中です。</p>
         <p id="home-couple-status" class="hero-lead">カップル連携状態を確認しています。</p>
         <button id="go-roulette" class="btn-primary" type="button" hidden>デートルーレットを始める</button>
+        <button id="go-ninja" class="btn-secondary" type="button" hidden>サイレント・ニンジャ</button>
         <button id="home-back-start" class="btn-secondary" type="button">LPに戻る</button>
         <button id="btn-withdraw" class="btn-danger" type="button">退会して全データを削除</button>
+      </div>
+    </section>
+
+    <section id="screen-ninja" class="screen" aria-label="サイレントニンジャ">
+      <div class="topbar">
+        <button id="ninja-back-home" class="btn-back" type="button">←</button>
+        <span class="logo-pill">ニンジャ</span>
+        <span style="width:44px"></span>
+      </div>
+      <h1 class="hero-title">サイレント・ニンジャ</h1>
+      <p id="ninja-week-summary" class="hero-lead">今週の記録を読み込んでいます…</p>
+      <div id="ninja-score-panel" class="card" hidden></div>
+      <div class="card">
+        <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">やったことをタップしてポイントをためよう（相手には内訳は見えません）</p>
+        <div id="ninja-mission-list" class="ninja-mission-grid"></div>
+      </div>
+      <div class="card">
+        <p class="hero-lead" style="font-size:0.9rem; margin-bottom:0.5rem;">自分の申告一覧</p>
+        <ul id="ninja-my-log" class="match-list"></ul>
+        <button id="ninja-refresh" class="btn-secondary" type="button">週の状況を更新</button>
       </div>
     </section>
 

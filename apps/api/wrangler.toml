@@ -6,7 +6,8 @@
 # リモートへマイグレーション（認証要）: npm run d1:migrate:staging など（ルート package.json）
 #
 # シークレットはダッシュボード「Variables and Secrets」または wrangler secret put:
-#   RESEND_API_KEY, RESEND_FROM（任意）, 公開変数 ALLOWED_ORIGINS（カンマ区切り: Pages URL + 必要なら http://localhost:5173）
+#   RESEND_API_KEY, RESEND_FROM（任意）, NINJA_PUBLISH_SECRET（週次 publish ジョブ用・任意）
+#   公開変数 ALLOWED_ORIGINS（カンマ区切り: Pages URL + 必要なら http://localhost:5173）
 
 name = "coupleplan-api"
 main = "src/worker.ts"

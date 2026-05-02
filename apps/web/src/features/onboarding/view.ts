@@ -70,6 +70,7 @@ export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeRe
   const profile = document.getElementById("home-profile");
   const coupleStatus = document.getElementById("home-couple-status");
   const rouletteButton = document.getElementById("go-roulette") as HTMLButtonElement | null;
+  const ninjaButton = document.getElementById("go-ninja") as HTMLButtonElement | null;
   if (profile) {
     profile.textContent = user
       ? `${user.displayName}（${user.email}）でログイン中です。`
@@ -79,6 +80,7 @@ export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeRe
     if (!couple) {
       coupleStatus.textContent = "まだカップル連携は完了していません。LPに戻って登録フローから連携してください。";
       if (rouletteButton) rouletteButton.hidden = true;
+      if (ninjaButton) ninjaButton.hidden = true;
       return;
     }
     coupleStatus.textContent =
@@ -88,5 +90,8 @@ export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeRe
   }
   if (rouletteButton) {
     rouletteButton.hidden = !(couple && couple.status === "active");
+  }
+  if (ninjaButton) {
+    ninjaButton.hidden = !(couple && couple.status === "active");
   }
 }

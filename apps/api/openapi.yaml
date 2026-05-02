@@ -13,6 +13,7 @@ tags:
   - name: users
   - name: couples
   - name: roulette
+  - name: ninja
 paths:
   /auth/otp/request:
     post:
@@ -269,6 +270,87 @@ paths:
                 $ref: "#/components/schemas/RouletteSessionView"
         "412":
           description: Active couple is required
+  /ninja/missions:
+    get:
+      tags: [ninja]
+      summary: List ninja mission catalog (static)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Mission cards with point values
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [missions]
+                properties:
+                  missions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NinjaMissionCard"
+  /ninja/logs:
+    post:
+      tags: [ninja]
+      summary: Declare completion of a mission (points taken from server catalog)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinjaLogDeclaration"
+      responses:
+        "200":
+          description: Created log entry
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [log]
+                properties:
+                  log:
+                    $ref: "#/components/schemas/NinjaLogItem"
+        "400":
+          description: Invalid mission or payload
+        "412":
+          description: Active couple is required
+  /ninja/week:
+    get:
+      tags: [ninja]
+      summary: Current JST week view (own logs always; partner total after publish job)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Weekly ninja view for the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinjaWeekView"
+        "412":
+          description: Active couple is required
+  /ninja/jobs/publish-week:
+    post:
+      tags: [ninja]
+      summary: Aggregate and publish weekly ninja totals for all active couples (job secret in production)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinjaPublishWeekRequest"
+      responses:
+        "200":
+          description: Publish completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinjaPublishWeekResult"
+        "401":
+          description: Invalid job authorization
+        "503":
+          description: Job secret not configured in production
 components:
   securitySchemes:
     bearerAuth:
@@ -488,3 +570,85 @@ components:
             $ref: "#/components/schemas/RouletteVote"
         result:
           $ref: "#/components/schemas/RouletteResultView"
+    NinjaMissionCard:
+      type: object
+      required: [id, emoji, title, description, point]
+      properties:
+        id:
+          type: string
+        emoji:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        point:
+          type: integer
+    NinjaLogDeclaration:
+      type: object
+      required: [missionId]
+      properties:
+        missionId:
+          type: string
+    NinjaLogItem:
+      type: object
+      required: [id, missionId, title, point, createdAt]
+      properties:
+        id:
+          type: string
+        missionId:
+          type: string
+        title:
+          type: string
+        point:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    NinjaWeekView:
+      type: object
+      required:
+        - weekStart
+        - weekEnd
+        - myUserId
+        - myPoints
+        - partnerPoints
+        - publishedAt
+        - myLogs
+      properties:
+        weekStart:
+          type: string
+          description: Monday YYYY-MM-DD (Asia/Tokyo)
+        weekEnd:
+          type: string
+          description: Sunday YYYY-MM-DD (Asia/Tokyo)
+        myUserId:
+          type: string
+        myPoints:
+          type: integer
+        partnerPoints:
+          type: integer
+          nullable: true
+          description: null until weekly job publishes
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        myLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/NinjaLogItem"
+    NinjaPublishWeekRequest:
+      type: object
+      properties:
+        weekStart:
+          type: string
+          description: Optional Monday YYYY-MM-DD (JST). Defaults to current week.
+    NinjaPublishWeekResult:
+      type: object
+      required: [weekStart, couplesPublished]
+      properties:
+        weekStart:
+          type: string
+        couplesPublished:
+          type: integer
