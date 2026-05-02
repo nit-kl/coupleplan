@@ -157,6 +157,92 @@ async function run() {
       "both partners should be in couple",
     );
 
+    // ---- ルーレット (P1-2 / P1-3) ----
+    const plans = await request("/roulette/plans", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(plans.status === 200, "list plans failed");
+    assert(
+      Array.isArray(plans.data.plans) && plans.data.plans.length >= 3,
+      "plan catalog should have at least 3 entries",
+    );
+    const planList = plans.data.plans;
+    const allLikes = planList.map((p) => ({ planId: p.id, vote: "like" }));
+
+    const sessionA0 = await request("/roulette/sessions/me", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(sessionA0.status === 200, "session view A failed");
+    assert(sessionA0.data.status === "collecting", "session should start as collecting");
+    assert(
+      sessionA0.data.totalPlans === planList.length,
+      "session totalPlans should equal catalog length",
+    );
+
+    const voteA = await request("/roulette/sessions/me/votes", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ votes: allLikes }),
+    });
+    assert(voteA.status === 200, "submit votes A failed");
+    assert(voteA.data.partners.me.completed === true, "A should be completed after voting");
+    assert(voteA.data.partners.partner.completed === false, "partner should not be completed yet");
+    assert(voteA.data.status === "collecting", "session should remain collecting before B votes");
+
+    const voteB = await request("/roulette/sessions/me/votes", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenB}` },
+      body: JSON.stringify({ votes: allLikes }),
+    });
+    assert(voteB.status === 200, "submit votes B failed");
+    assert(voteB.data.status === "ready", "session should become ready after both vote");
+    assert(
+      Array.isArray(voteB.data.matchedPlanIds) && voteB.data.matchedPlanIds.length >= 3,
+      "matched plans should be >= 3",
+    );
+
+    const spin1 = await request("/roulette/sessions/me/spin", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(spin1.status === 200, "spin failed");
+    assert(spin1.data.status === "decided", "session should be decided after spin");
+    assert(spin1.data.result, "spin should return a result");
+    assert(
+      spin1.data.matchedPlanIds.includes(spin1.data.result.selectedPlanId),
+      "selected plan must be among matched plans",
+    );
+
+    const spin2 = await request("/roulette/sessions/me/spin", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(spin2.status === 200, "second spin should be idempotent");
+    assert(
+      spin2.data.result?.selectedPlanId === spin1.data.result.selectedPlanId,
+      "second spin must return the same selected plan",
+    );
+
+    const restart = await request("/roulette/sessions/me/restart", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(restart.status === 200, "restart failed");
+    assert(restart.data.status === "collecting", "restart should produce a fresh collecting session");
+    assert(
+      restart.data.sessionId !== spin1.data.sessionId,
+      "restart must create a new session id",
+    );
+
+    const badVote = await request("/roulette/sessions/me/votes", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ votes: [{ planId: "plan_does_not_exist", vote: "like" }] }),
+    });
+    assert(badVote.status === 400, "unknown plan should be rejected with 400");
+
     const deleteAccount = await request("/users/me", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${tokenA}` },
@@ -181,13 +267,13 @@ async function run() {
     });
     assert(meAfterDeleteB.status === 401, "deleted partner B token should be unauthorized");
 
-    console.log("P1-1 smoke test passed.");
+    console.log("P1-1/P1-2/P1-3 smoke test passed.");
   } finally {
     cleanup();
   }
 }
 
 run().catch((err) => {
-  console.error(`P1-1 smoke test failed: ${err.message}`);
+  console.error(`smoke test failed: ${err.message}`);
   process.exit(1);
 });

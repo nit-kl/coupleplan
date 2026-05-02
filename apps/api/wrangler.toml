@@ -21,6 +21,7 @@ ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 RESEND_FROM = "CouplePlan <noreply@coupleplan.com>"
 
 # ローカル: wrangler d1 create coupleplan-local の UUID
+# migrations/ を追加したら: npm run d1:migrate:local（未適用だと roulette 等の API が 500）
 [[d1_databases]]
 binding = "DB"
 database_name = "coupleplan-local"
