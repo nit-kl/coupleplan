@@ -35,7 +35,7 @@
 
 ## 開発計画書との対応
 
-[開発計画書.md](../開発計画書.md) の「§6 ADR 候補」に列挙したトピック（認証、カップル/招待、ルーレット状態、ニンジャ、週次集計）は、**意思決定が固まったタイミング**で番号付きファイルを追加し、計画書の進捗表「関連ADR」列にファイル名を書き込む。
+[開発計画書.md](../開発計画書.md) の「§6 ADR 候補」に列挙したトピック（認証、カップル/招待、デートルーレット状態、ニンジャ、週次集計）は、**意思決定が固まったタイミング**で番号付きファイルを追加し、計画書の進捗表「関連ADR」列にファイル名を書き込む。
 
 現時点の作成済みADR:
 
@@ -49,5 +49,6 @@
 - [0008-relogin-30days-local-session.md](./0008-relogin-30days-local-session.md)
 - [0009-httpOnly-refresh-token-auth.md](./0009-httpOnly-refresh-token-auth.md)
 - [0010-accept-invite-from-pending-solo-member.md](./0010-accept-invite-from-pending-solo-member.md)
+- [0011-date-roulette-state.md](./0011-date-roulette-state.md)
 
 引き続き、判断前に実装しないこと。

@@ -1,3 +1,4 @@
+import { setAccessToken as setSharedAccessToken } from "../../shared/session/sessionStore";
 import type { CoupleMeResponse, OnboardingMode, OnboardingState, UserProfile } from "./types";
 
 export function createOnboardingState(): {
@@ -24,6 +25,7 @@ export function createOnboardingState(): {
     },
     setAccessToken: (token: string) => {
       state.accessToken = token;
+      setSharedAccessToken(token);
     },
     setInviteCode: (code: string) => {
       state.inviteCode = code;
@@ -43,6 +45,7 @@ export function createOnboardingState(): {
       state.otpRequestedEmail = "";
       state.user = undefined;
       state.couple = undefined;
+      setSharedAccessToken("");
     },
   };
 }

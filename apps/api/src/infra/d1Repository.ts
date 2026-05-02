@@ -1,6 +1,14 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import type { AppRepository, AuthAuditEvent } from "../domain/repository";
-import type { Couple, Invite, OtpRequestRecord, User } from "../domain/types";
+import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain/repository";
+import type {
+  Couple,
+  Invite,
+  OtpRequestRecord,
+  RouletteResult,
+  RouletteSession,
+  RouletteVote,
+  User,
+} from "../domain/types";
 import { newId as genId, newOtpCode, newSessionToken } from "../lib/ids";
 
 export class D1Repository implements AppRepository {
@@ -282,6 +290,20 @@ export class D1Repository implements AppRepository {
       .run();
 
     if (couple) {
+      // ルーレット関連: results -> votes -> sessions の順で消すと外部キーの依存に沿う
+      await this.db
+        .prepare(
+          `DELETE FROM roulette_results WHERE session_id IN (SELECT id FROM roulette_sessions WHERE couple_id = ?)`,
+        )
+        .bind(couple.id)
+        .run();
+      await this.db
+        .prepare(
+          `DELETE FROM roulette_votes WHERE session_id IN (SELECT id FROM roulette_sessions WHERE couple_id = ?)`,
+        )
+        .bind(couple.id)
+        .run();
+      await this.db.prepare(`DELETE FROM roulette_sessions WHERE couple_id = ?`).bind(couple.id).run();
       await this.db.prepare(`DELETE FROM invites WHERE couple_id = ?`).bind(couple.id).run();
       await this.db.prepare(`DELETE FROM couple_members WHERE couple_id = ?`).bind(couple.id).run();
       await this.db.prepare(`DELETE FROM couples WHERE id = ?`).bind(couple.id).run();
@@ -311,5 +333,152 @@ export class D1Repository implements AppRepository {
       )
       .bind(id, event, email, detail, createdAtMs)
       .run();
+  }
+
+  async getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession> {
+    const existing = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, status, started_at AS startedAt, finished_at AS finishedAt
+           FROM roulette_sessions
+          WHERE couple_id = ? AND archived_at IS NULL
+          ORDER BY started_at DESC
+          LIMIT 1`,
+      )
+      .bind(coupleId)
+      .first<{
+        id: string;
+        coupleId: string;
+        status: RouletteSession["status"];
+        startedAt: string;
+        finishedAt: string | null;
+      }>();
+    if (existing) {
+      return {
+        id: existing.id,
+        coupleId: existing.coupleId,
+        status: existing.status,
+        startedAt: existing.startedAt,
+        finishedAt: existing.finishedAt ?? undefined,
+      };
+    }
+    const session: RouletteSession = {
+      id: this.newId("rls"),
+      coupleId,
+      status: "collecting",
+      startedAt: this.nowIso(),
+    };
+    await this.db
+      .prepare(
+        `INSERT INTO roulette_sessions (id, couple_id, status, started_at) VALUES (?, ?, ?, ?)`,
+      )
+      .bind(session.id, session.coupleId, session.status, session.startedAt)
+      .run();
+    return session;
+  }
+
+  async getRouletteSessionById(sessionId: string): Promise<RouletteSession | null> {
+    const row = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, status, started_at AS startedAt, finished_at AS finishedAt
+           FROM roulette_sessions
+          WHERE id = ?`,
+      )
+      .bind(sessionId)
+      .first<{
+        id: string;
+        coupleId: string;
+        status: RouletteSession["status"];
+        startedAt: string;
+        finishedAt: string | null;
+      }>();
+    if (!row) return null;
+    return {
+      id: row.id,
+      coupleId: row.coupleId,
+      status: row.status,
+      startedAt: row.startedAt,
+      finishedAt: row.finishedAt ?? undefined,
+    };
+  }
+
+  async updateRouletteSessionStatus(
+    sessionId: string,
+    status: RouletteSession["status"],
+    finishedAt: string | null,
+  ): Promise<void> {
+    await this.db
+      .prepare(`UPDATE roulette_sessions SET status = ?, finished_at = ? WHERE id = ?`)
+      .bind(status, finishedAt, sessionId)
+      .run();
+  }
+
+  async archiveRouletteSession(sessionId: string, archivedAt: string): Promise<void> {
+    await this.db
+      .prepare(`UPDATE roulette_sessions SET archived_at = ? WHERE id = ?`)
+      .bind(archivedAt, sessionId)
+      .run();
+  }
+
+  async upsertRouletteVotes(
+    sessionId: string,
+    userId: string,
+    votes: RouletteVoteInput[],
+  ): Promise<void> {
+    if (votes.length === 0) return;
+    const now = this.nowIso();
+    for (const v of votes) {
+      const id = this.newId("rlv");
+      await this.db
+        .prepare(
+          `INSERT INTO roulette_votes (id, session_id, user_id, plan_id, vote, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(session_id, user_id, plan_id)
+             DO UPDATE SET vote = excluded.vote, created_at = excluded.created_at`,
+        )
+        .bind(id, sessionId, userId, v.planId, v.vote, now)
+        .run();
+    }
+  }
+
+  async listRouletteVotes(sessionId: string): Promise<RouletteVote[]> {
+    const res = await this.db
+      .prepare(
+        `SELECT session_id AS sessionId, user_id AS userId, plan_id AS planId, vote, created_at AS createdAt
+           FROM roulette_votes
+          WHERE session_id = ?`,
+      )
+      .bind(sessionId)
+      .all<{
+        sessionId: string;
+        userId: string;
+        planId: string;
+        vote: RouletteVote["vote"];
+        createdAt: string;
+      }>();
+    const list = (res as { results?: RouletteVote[] }).results ?? [];
+    return list.map((r) => ({ ...r }));
+  }
+
+  async saveRouletteResult(result: RouletteResult): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO roulette_results (id, session_id, selected_plan_id, created_at)
+              VALUES (?, ?, ?, ?)
+         ON CONFLICT(session_id) DO NOTHING`,
+      )
+      .bind(result.id, result.sessionId, result.selectedPlanId, result.createdAt)
+      .run();
+  }
+
+  async getRouletteResultBySession(sessionId: string): Promise<RouletteResult | null> {
+    const row = await this.db
+      .prepare(
+        `SELECT id, session_id AS sessionId, selected_plan_id AS selectedPlanId, created_at AS createdAt
+           FROM roulette_results
+          WHERE session_id = ?`,
+      )
+      .bind(sessionId)
+      .first<{ id: string; sessionId: string; selectedPlanId: string; createdAt: string }>();
+    return row ?? null;
   }
 }

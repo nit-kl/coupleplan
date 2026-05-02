@@ -1,6 +1,17 @@
-import type { Couple, Invite, OtpRequestRecord, User } from "./types";
+import type {
+  Couple,
+  Invite,
+  OtpRequestRecord,
+  RouletteResult,
+  RouletteSession,
+  RouletteVote,
+  RouletteVoteValue,
+  User,
+} from "./types";
 
 export type AuthAuditEvent = "otp_request" | "otp_rate_limited" | "otp_send_fail" | "otp_verify_ok" | "otp_verify_fail";
+
+export type RouletteVoteInput = { planId: string; vote: RouletteVoteValue };
 
 /**
  * 認証・会員・カップル/招待の永続化。実装はインメモリ（Node ローカル）と D1（Worker）の2系統。
@@ -43,4 +54,19 @@ export interface AppRepository {
     email: string | null,
     detail: string | null,
   ): Promise<void>;
+
+  getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession>;
+  getRouletteSessionById(sessionId: string): Promise<RouletteSession | null>;
+  updateRouletteSessionStatus(
+    sessionId: string,
+    status: RouletteSession["status"],
+    finishedAt: string | null,
+  ): Promise<void>;
+  archiveRouletteSession(sessionId: string, archivedAt: string): Promise<void>;
+
+  upsertRouletteVotes(sessionId: string, userId: string, votes: RouletteVoteInput[]): Promise<void>;
+  listRouletteVotes(sessionId: string): Promise<RouletteVote[]>;
+
+  saveRouletteResult(result: RouletteResult): Promise<void>;
+  getRouletteResultBySession(sessionId: string): Promise<RouletteResult | null>;
 }
