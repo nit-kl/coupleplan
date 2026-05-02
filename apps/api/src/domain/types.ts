@@ -93,3 +93,49 @@ export type RouletteSessionView = {
   myVotes: { planId: string; vote: RouletteVoteValue }[];
   result?: { selectedPlanId: string; selectedPlan: PlanCard; decidedAt: string };
 };
+
+export type NinjaMissionCard = {
+  id: string;
+  emoji: string;
+  title: string;
+  description: string;
+  point: number;
+};
+
+export type NinjaLog = {
+  id: string;
+  coupleId: string;
+  userId: string;
+  missionId: string;
+  point: number;
+  createdAt: string;
+};
+
+export type NinjaWeeklySummary = {
+  id: string;
+  coupleId: string;
+  weekStart: string;
+  ownerUserId: string;
+  partnerUserId: string;
+  ownerPoints: number;
+  partnerPoints: number;
+  publishedAt: string;
+};
+
+export type NinjaLogItemView = {
+  id: string;
+  missionId: string;
+  title: string;
+  point: number;
+  createdAt: string;
+};
+
+export type NinjaWeekView = {
+  weekStart: string;
+  weekEnd: string;
+  myUserId: string;
+  myPoints: number;
+  partnerPoints: number | null;
+  publishedAt: string | null;
+  myLogs: NinjaLogItemView[];
+};

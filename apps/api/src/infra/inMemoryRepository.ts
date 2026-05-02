@@ -2,6 +2,8 @@ import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain
 import {
   Couple,
   Invite,
+  NinjaLog,
+  NinjaWeeklySummary,
   OtpRequestRecord,
   RouletteResult,
   RouletteSession,
@@ -24,6 +26,8 @@ export class InMemoryRepository implements AppRepository {
   private rouletteSessions = new Map<string, RouletteSessionRow>();
   private rouletteVotes = new Map<string, RouletteVote>();
   private rouletteResults = new Map<string, RouletteResult>();
+  private ninjaLogs = new Map<string, NinjaLog>();
+  private ninjaWeeklySummaries = new Map<string, NinjaWeeklySummary>();
 
   nowIso(): string {
     return new Date().toISOString();
@@ -178,6 +182,13 @@ export class InMemoryRepository implements AppRepository {
       }
       this.couples.delete(couple.id);
 
+      for (const [lid, log] of Array.from(this.ninjaLogs.entries())) {
+        if (log.coupleId === couple.id) this.ninjaLogs.delete(lid);
+      }
+      for (const [sk, summary] of Array.from(this.ninjaWeeklySummaries.entries())) {
+        if (summary.coupleId === couple.id) this.ninjaWeeklySummaries.delete(sk);
+      }
+
       for (const [sid, session] of Array.from(this.rouletteSessions.entries())) {
         if (session.coupleId === couple.id) {
           this.rouletteSessions.delete(sid);
@@ -291,5 +302,37 @@ export class InMemoryRepository implements AppRepository {
   async getRouletteResultBySession(sessionId: string): Promise<RouletteResult | null> {
     const row = this.rouletteResults.get(sessionId);
     return row ? { ...row } : null;
+  }
+
+  async insertNinjaLog(log: NinjaLog): Promise<void> {
+    this.ninjaLogs.set(log.id, { ...log });
+  }
+
+  async listNinjaLogsInRange(
+    coupleId: string,
+    startIso: string,
+    endIso: string,
+  ): Promise<NinjaLog[]> {
+    return Array.from(this.ninjaLogs.values())
+      .filter((l) => l.coupleId === coupleId && l.createdAt >= startIso && l.createdAt < endIso)
+      .map((l) => ({ ...l }));
+  }
+
+  async getNinjaWeeklySummary(
+    coupleId: string,
+    weekStart: string,
+  ): Promise<NinjaWeeklySummary | null> {
+    const row = this.ninjaWeeklySummaries.get(`${coupleId}\t${weekStart}`);
+    return row ? { ...row } : null;
+  }
+
+  async upsertNinjaWeeklySummary(summary: NinjaWeeklySummary): Promise<void> {
+    this.ninjaWeeklySummaries.set(`${summary.coupleId}\t${summary.weekStart}`, { ...summary });
+  }
+
+  async listActiveCoupleIds(): Promise<string[]> {
+    return Array.from(this.couples.values())
+      .filter((c) => c.status === "active" && c.memberIds.length === 2)
+      .map((c) => c.id);
   }
 }

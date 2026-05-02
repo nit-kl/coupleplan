@@ -8,6 +8,7 @@ import type { AppRepository } from "./domain/repository";
 import { AccountUsecase } from "./usecases/accountUsecase";
 import { AuthUsecase } from "./usecases/authUsecase";
 import { CoupleUsecase } from "./usecases/coupleUsecase";
+import { NinjaUsecase } from "./usecases/ninjaUsecase";
 import { RouletteUsecase } from "./usecases/rouletteUsecase";
 
 export type AppEnv = {
@@ -17,6 +18,7 @@ export type AppEnv = {
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
   ALLOWED_ORIGINS?: string;
+  NINJA_PUBLISH_SECRET?: string;
 };
 const REFRESH_COOKIE_NAME = "cp_refresh";
 
@@ -104,6 +106,7 @@ export function createHonoApp(options: {
   const accountUsecase = new AccountUsecase(repo);
   const coupleUsecase = new CoupleUsecase(repo);
   const rouletteUsecase = new RouletteUsecase(repo);
+  const ninjaUsecase = new NinjaUsecase(repo);
 
   const app = new Hono();
   const allowedOrigins = parseCorsOrigins(
@@ -281,6 +284,56 @@ export function createHonoApp(options: {
     }
   });
 
+  app.get("/ninja/missions", async (c) => {
+    try {
+      await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json({ missions: ninjaUsecase.listMissions() }, 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/ninja/logs", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json();
+      return c.json(await ninjaUsecase.declare(user, body), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.get("/ninja/week", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await ninjaUsecase.getWeek(user), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/ninja/week/publish", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json().catch(() => ({}));
+      return c.json(await ninjaUsecase.publishMyWeek(user, body), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/ninja/jobs/publish-week", async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      return c.json(
+        await ninjaUsecase.publishWeek(appEnv, c.req.header("authorization"), body),
+        200,
+      );
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
   app.notFound((c) => c.json({ error: "not found", code: "not_found" }, 404));
 
   return app;
@@ -308,6 +361,7 @@ export function buildDefaultInMemoryApp(): Hono {
     RESEND_FROM: process.env.RESEND_FROM,
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
     ALLOW_DEBUG_OTP: process.env.ALLOW_DEBUG_OTP,
+    NINJA_PUBLISH_SECRET: process.env.NINJA_PUBLISH_SECRET,
   };
   const email = createOtpEmailFromEnv({
     ...process.env,

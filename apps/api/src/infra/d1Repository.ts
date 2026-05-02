@@ -3,6 +3,8 @@ import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain
 import type {
   Couple,
   Invite,
+  NinjaLog,
+  NinjaWeeklySummary,
   OtpRequestRecord,
   RouletteResult,
   RouletteSession,
@@ -290,6 +292,9 @@ export class D1Repository implements AppRepository {
       .run();
 
     if (couple) {
+      await this.db.prepare(`DELETE FROM ninja_weekly_summaries WHERE couple_id = ?`).bind(couple.id).run();
+      await this.db.prepare(`DELETE FROM ninja_logs WHERE couple_id = ?`).bind(couple.id).run();
+
       // ルーレット関連: results -> votes -> sessions の順で消すと外部キーの依存に沿う
       await this.db
         .prepare(
@@ -480,5 +485,90 @@ export class D1Repository implements AppRepository {
       .bind(sessionId)
       .first<{ id: string; sessionId: string; selectedPlanId: string; createdAt: string }>();
     return row ?? null;
+  }
+
+  async insertNinjaLog(log: NinjaLog): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO ninja_logs (id, couple_id, user_id, mission_id, point, created_at)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(log.id, log.coupleId, log.userId, log.missionId, log.point, log.createdAt)
+      .run();
+  }
+
+  async listNinjaLogsInRange(
+    coupleId: string,
+    startIso: string,
+    endIso: string,
+  ): Promise<NinjaLog[]> {
+    const res = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, user_id AS userId, mission_id AS missionId, point, created_at AS createdAt
+           FROM ninja_logs
+          WHERE couple_id = ? AND created_at >= ? AND created_at < ?
+          ORDER BY created_at ASC`,
+      )
+      .bind(coupleId, startIso, endIso)
+      .all<NinjaLog>();
+    const list = (res as { results?: NinjaLog[] }).results ?? [];
+    return list.map((r) => ({ ...r }));
+  }
+
+  async getNinjaWeeklySummary(
+    coupleId: string,
+    weekStart: string,
+  ): Promise<NinjaWeeklySummary | null> {
+    const row = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, week_start AS weekStart,
+                owner_user_id AS ownerUserId, partner_user_id AS partnerUserId,
+                owner_points AS ownerPoints, partner_points AS partnerPoints,
+                published_at AS publishedAt
+           FROM ninja_weekly_summaries
+          WHERE couple_id = ? AND week_start = ?`,
+      )
+      .bind(coupleId, weekStart)
+      .first<NinjaWeeklySummary>();
+    return row ?? null;
+  }
+
+  async upsertNinjaWeeklySummary(summary: NinjaWeeklySummary): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO ninja_weekly_summaries (
+           id, couple_id, week_start, owner_user_id, partner_user_id,
+           owner_points, partner_points, published_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(couple_id, week_start) DO UPDATE SET
+           owner_user_id = excluded.owner_user_id,
+           partner_user_id = excluded.partner_user_id,
+           owner_points = excluded.owner_points,
+           partner_points = excluded.partner_points,
+           published_at = excluded.published_at`,
+      )
+      .bind(
+        summary.id,
+        summary.coupleId,
+        summary.weekStart,
+        summary.ownerUserId,
+        summary.partnerUserId,
+        summary.ownerPoints,
+        summary.partnerPoints,
+        summary.publishedAt,
+      )
+      .run();
+  }
+
+  async listActiveCoupleIds(): Promise<string[]> {
+    const res = await this.db
+      .prepare(
+        `SELECT c.id AS id FROM couples c
+          WHERE c.status = 'active'
+            AND (SELECT COUNT(*) FROM couple_members cm WHERE cm.couple_id = c.id) = 2`,
+      )
+      .all<{ id: string }>();
+    const list = (res as { results?: { id: string }[] }).results ?? [];
+    return list.map((r) => r.id);
   }
 }
