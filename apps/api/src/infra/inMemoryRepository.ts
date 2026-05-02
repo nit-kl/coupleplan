@@ -1,8 +1,18 @@
-import type { AppRepository, AuthAuditEvent } from "../domain/repository";
-import { Couple, Invite, OtpRequestRecord, User } from "../domain/types";
+import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain/repository";
+import {
+  Couple,
+  Invite,
+  OtpRequestRecord,
+  RouletteResult,
+  RouletteSession,
+  RouletteVote,
+  User,
+} from "../domain/types";
 import { newId as genId, newOtpCode, newSessionToken } from "../lib/ids";
 
 type OtpRow = OtpRequestRecord & { id: string; createdAtMs: number };
+
+type RouletteSessionRow = RouletteSession & { archivedAt?: string };
 
 export class InMemoryRepository implements AppRepository {
   private users = new Map<string, User>();
@@ -11,6 +21,9 @@ export class InMemoryRepository implements AppRepository {
   private sessions = new Map<string, string>();
   private refreshSessions = new Map<string, { userId: string; expiresAtMs: number }>();
   private otpRequests = new Map<string, OtpRow>();
+  private rouletteSessions = new Map<string, RouletteSessionRow>();
+  private rouletteVotes = new Map<string, RouletteVote>();
+  private rouletteResults = new Map<string, RouletteResult>();
 
   nowIso(): string {
     return new Date().toISOString();
@@ -164,6 +177,18 @@ export class InMemoryRepository implements AppRepository {
         }
       }
       this.couples.delete(couple.id);
+
+      for (const [sid, session] of Array.from(this.rouletteSessions.entries())) {
+        if (session.coupleId === couple.id) {
+          this.rouletteSessions.delete(sid);
+          for (const [vid, vote] of Array.from(this.rouletteVotes.entries())) {
+            if (vote.sessionId === sid) this.rouletteVotes.delete(vid);
+          }
+          for (const [rid, result] of Array.from(this.rouletteResults.entries())) {
+            if (result.sessionId === sid) this.rouletteResults.delete(rid);
+          }
+        }
+      }
     }
 
     for (const deletedUserId of deletedUserIds) {
@@ -184,5 +209,87 @@ export class InMemoryRepository implements AppRepository {
     _detail: string | null,
   ): Promise<void> {
     // ローカルではログ過多を避けスキップ（必要なら console に出す）
+  }
+
+  async getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession> {
+    const existing = Array.from(this.rouletteSessions.values()).find(
+      (s) => s.coupleId === coupleId && !s.archivedAt,
+    );
+    if (existing) {
+      const { archivedAt: _archivedAt, ...rest } = existing;
+      return { ...rest };
+    }
+    const session: RouletteSessionRow = {
+      id: this.newId("rls"),
+      coupleId,
+      status: "collecting",
+      startedAt: this.nowIso(),
+    };
+    this.rouletteSessions.set(session.id, session);
+    const { archivedAt: _archivedAt, ...rest } = session;
+    return { ...rest };
+  }
+
+  async getRouletteSessionById(sessionId: string): Promise<RouletteSession | null> {
+    const row = this.rouletteSessions.get(sessionId);
+    if (!row) return null;
+    const { archivedAt: _archivedAt, ...rest } = row;
+    return { ...rest };
+  }
+
+  async updateRouletteSessionStatus(
+    sessionId: string,
+    status: RouletteSession["status"],
+    finishedAt: string | null,
+  ): Promise<void> {
+    const row = this.rouletteSessions.get(sessionId);
+    if (!row) return;
+    row.status = status;
+    if (finishedAt) {
+      row.finishedAt = finishedAt;
+    } else if (finishedAt === null && status !== "decided") {
+      row.finishedAt = undefined;
+    }
+    this.rouletteSessions.set(sessionId, row);
+  }
+
+  async archiveRouletteSession(sessionId: string, archivedAt: string): Promise<void> {
+    const row = this.rouletteSessions.get(sessionId);
+    if (!row) return;
+    row.archivedAt = archivedAt;
+    this.rouletteSessions.set(sessionId, row);
+  }
+
+  async upsertRouletteVotes(
+    sessionId: string,
+    userId: string,
+    votes: RouletteVoteInput[],
+  ): Promise<void> {
+    const now = this.nowIso();
+    for (const v of votes) {
+      const key = `${sessionId}:${userId}:${v.planId}`;
+      this.rouletteVotes.set(key, {
+        sessionId,
+        userId,
+        planId: v.planId,
+        vote: v.vote,
+        createdAt: now,
+      });
+    }
+  }
+
+  async listRouletteVotes(sessionId: string): Promise<RouletteVote[]> {
+    return Array.from(this.rouletteVotes.values())
+      .filter((v) => v.sessionId === sessionId)
+      .map((v) => ({ ...v }));
+  }
+
+  async saveRouletteResult(result: RouletteResult): Promise<void> {
+    this.rouletteResults.set(result.sessionId, { ...result });
+  }
+
+  async getRouletteResultBySession(sessionId: string): Promise<RouletteResult | null> {
+    const row = this.rouletteResults.get(sessionId);
+    return row ? { ...row } : null;
   }
 }

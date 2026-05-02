@@ -69,6 +69,7 @@ export function setPairHeadlines(mode: OnboardingMode): void {
 export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeResponse | undefined): void {
   const profile = document.getElementById("home-profile");
   const coupleStatus = document.getElementById("home-couple-status");
+  const rouletteButton = document.getElementById("go-roulette") as HTMLButtonElement | null;
   if (profile) {
     profile.textContent = user
       ? `${user.displayName}（${user.email}）でログイン中です。`
@@ -77,11 +78,15 @@ export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeRe
   if (coupleStatus) {
     if (!couple) {
       coupleStatus.textContent = "まだカップル連携は完了していません。LPに戻って登録フローから連携してください。";
+      if (rouletteButton) rouletteButton.hidden = true;
       return;
     }
     coupleStatus.textContent =
       couple.status === "active"
         ? `カップル連携済みです（メンバー ${couple.members.length} 人）。`
         : "カップルは作成済みですが、まだ相手の参加待ちです。";
+  }
+  if (rouletteButton) {
+    rouletteButton.hidden = !(couple && couple.status === "active");
   }
 }

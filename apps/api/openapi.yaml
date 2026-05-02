@@ -12,6 +12,7 @@ tags:
   - name: auth
   - name: users
   - name: couples
+  - name: roulette
 paths:
   /auth/otp/request:
     post:
@@ -177,6 +178,97 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Couple"
+  /roulette/plans:
+    get:
+      tags: [roulette]
+      summary: List static plan catalog (Date Roulette)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Plan catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plans]
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PlanCard"
+  /roulette/sessions/me:
+    get:
+      tags: [roulette]
+      summary: Get the current roulette session for the active couple
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Roulette session view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouletteSessionView"
+        "412":
+          description: Active couple is required
+  /roulette/sessions/me/votes:
+    post:
+      tags: [roulette]
+      summary: Submit (upsert) like/pass votes for plans
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouletteVoteSubmission"
+      responses:
+        "200":
+          description: Updated session view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouletteSessionView"
+        "400":
+          description: Invalid payload (bad_request / unknown_plan)
+        "409":
+          description: Session already decided
+        "412":
+          description: Active couple is required
+  /roulette/sessions/me/spin:
+    post:
+      tags: [roulette]
+      summary: Spin the roulette and persist a result (idempotent after decided)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Decided session view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouletteSessionView"
+        "409":
+          description: Session is not ready to spin (session_not_ready)
+        "412":
+          description: Active couple is required
+  /roulette/sessions/me/restart:
+    post:
+      tags: [roulette]
+      summary: Archive the current session and start a new collecting session
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: New session view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouletteSessionView"
+        "412":
+          description: Active couple is required
 components:
   securitySchemes:
     bearerAuth:
@@ -296,3 +388,103 @@ components:
         expiresAt:
           type: string
           format: date-time
+    PlanCard:
+      type: object
+      required: [id, emoji, title, description]
+      properties:
+        id:
+          type: string
+        emoji:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+    RouletteVoteValue:
+      type: string
+      enum: [like, pass]
+    RouletteVote:
+      type: object
+      required: [planId, vote]
+      properties:
+        planId:
+          type: string
+        vote:
+          $ref: "#/components/schemas/RouletteVoteValue"
+    RouletteVoteSubmission:
+      type: object
+      required: [votes]
+      properties:
+        votes:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/RouletteVote"
+    RouletteSessionStatus:
+      type: string
+      enum: [collecting, ready, decided]
+    RouletteResultView:
+      type: object
+      required: [selectedPlanId, selectedPlan, decidedAt]
+      properties:
+        selectedPlanId:
+          type: string
+        selectedPlan:
+          $ref: "#/components/schemas/PlanCard"
+        decidedAt:
+          type: string
+          format: date-time
+    RouletteSessionView:
+      type: object
+      required:
+        - sessionId
+        - status
+        - totalPlans
+        - partners
+        - matchedPlanIds
+        - matchThreshold
+        - myVotes
+      properties:
+        sessionId:
+          type: string
+        status:
+          $ref: "#/components/schemas/RouletteSessionStatus"
+        totalPlans:
+          type: integer
+        partners:
+          type: object
+          required: [me, partner]
+          properties:
+            me:
+              type: object
+              required: [userId, voted, completed]
+              properties:
+                userId:
+                  type: string
+                voted:
+                  type: integer
+                completed:
+                  type: boolean
+            partner:
+              type: object
+              required: [userId, completed]
+              properties:
+                userId:
+                  type: string
+                completed:
+                  type: boolean
+        matchedPlanIds:
+          type: array
+          description: collecting 中は空配列。ready/decided でカップル両者が like したプランID。
+          items:
+            type: string
+        matchThreshold:
+          type: integer
+          description: ready に遷移する候補数の最低値（MVPは3）。
+          example: 3
+        myVotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/RouletteVote"
+        result:
+          $ref: "#/components/schemas/RouletteResultView"

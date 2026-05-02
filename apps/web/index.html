@@ -188,6 +188,105 @@
       color: #b44949;
     }
 
+    .plan-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--card-shadow);
+      padding: 1.4rem 1rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .plan-card .emoji { font-size: 3.6rem; line-height: 1.1; }
+    .plan-card h2 { margin: 0.6rem 0 0.4rem; font-size: 1.25rem; }
+    .plan-card p { margin: 0; color: var(--ink-soft); line-height: 1.6; }
+
+    .vote-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      margin-top: 0.4rem;
+    }
+    .vote-buttons button { margin-top: 0; }
+    .vote-buttons .btn-pass {
+      background: #fff;
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+    }
+    .vote-buttons .btn-like {
+      background: linear-gradient(145deg, #f4ab93, #de8ea5);
+      color: #fff;
+      border: none;
+      box-shadow: 0 8px 20px rgba(222, 124, 150, 0.3);
+    }
+
+    .progress-text {
+      margin: 0.2rem 0 0.8rem;
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+    }
+
+    .match-banner {
+      background: linear-gradient(145deg, #f4ab93, #de8ea5);
+      color: #fff;
+      border-radius: 14px;
+      padding: 0.9rem;
+      text-align: center;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .match-list {
+      display: grid;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+    .match-list li {
+      list-style: none;
+      background: rgba(255, 233, 239, 0.72);
+      border: 1px solid #f4d3dc;
+      border-radius: 12px;
+      padding: 0.75rem 0.9rem;
+    }
+
+    .spin-stage {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--card-shadow);
+      padding: 2.2rem 1rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .spin-emoji {
+      font-size: 4.4rem;
+      animation: spin 0.9s cubic-bezier(.4,.0,.2,1) infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .result-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--card-shadow);
+      padding: 1.6rem 1rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .result-card .emoji { font-size: 4rem; }
+    .result-card h2 { margin: 0.6rem 0 0.4rem; font-size: 1.4rem; }
+    .result-card p { margin: 0; color: var(--ink-soft); line-height: 1.6; }
+    .result-hashtag {
+      margin-top: 0.6rem;
+      color: #bc6c89;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
   </style>
 </head>
 <body>
@@ -307,9 +406,79 @@
         <h1 class="hero-title">ホーム</h1>
         <p id="home-profile" class="hero-lead">ログイン中です。</p>
         <p id="home-couple-status" class="hero-lead">カップル連携状態を確認しています。</p>
+        <button id="go-roulette" class="btn-primary" type="button" hidden>デートルーレットを始める</button>
         <button id="home-back-start" class="btn-secondary" type="button">LPに戻る</button>
         <button id="btn-withdraw" class="btn-danger" type="button">退会して全データを削除</button>
       </div>
+    </section>
+
+    <section id="screen-roulette-swipe" class="screen" aria-label="プランをスワイプ">
+      <div class="topbar">
+        <button id="roulette-back-home" class="btn-back" type="button">←</button>
+        <span class="logo-pill">ルーレット</span>
+        <span style="width:44px"></span>
+      </div>
+      <h1 class="hero-title">気になるの、タップで教えて</h1>
+      <p class="hero-lead" id="roulette-swipe-status">相手には見えません。直感でOK。</p>
+      <div id="roulette-card-stage"></div>
+      <p class="progress-text" id="roulette-progress">0 / 0</p>
+      <button id="btn-restart-from-swipe" class="btn-secondary" type="button" hidden>セッションをやり直す</button>
+    </section>
+
+    <section id="screen-roulette-wait" class="screen" aria-label="相手の投票を待つ">
+      <div class="topbar">
+        <button id="wait-back-home" class="btn-back" type="button">←</button>
+        <span class="logo-pill">マッチ待ち</span>
+        <span style="width:44px"></span>
+      </div>
+      <h1 class="hero-title">相手の投票を待っています</h1>
+      <p class="hero-lead" id="roulette-wait-status">相手の選択が終わるまで、ホームに戻って待ってもOKです。</p>
+      <div class="card">
+        <p class="hero-lead" id="roulette-wait-detail">投票完了。相手の進行を確認しています。</p>
+        <button id="btn-refresh-wait" class="btn-primary" type="button">最新の進捗を確認</button>
+        <button id="btn-restart-from-wait" class="btn-secondary" type="button">セッションをやり直す</button>
+      </div>
+    </section>
+
+    <section id="screen-roulette-match" class="screen" aria-label="マッチしたプラン">
+      <div class="topbar">
+        <button id="match-back-home" class="btn-back" type="button">←</button>
+        <span class="logo-pill">マッチ</span>
+        <span style="width:44px"></span>
+      </div>
+      <div class="match-banner">ふたりとも「いいね」したのはこちら！</div>
+      <ul id="roulette-match-list" class="match-list"></ul>
+      <button id="btn-spin" class="btn-primary" type="button">ルーレットを回す</button>
+      <button id="btn-restart-from-match" class="btn-secondary" type="button">セッションをやり直す</button>
+    </section>
+
+    <section id="screen-roulette-spin" class="screen" aria-label="ルーレット抽選中">
+      <div class="topbar">
+        <span style="width:44px"></span>
+        <span class="logo-pill">抽選中</span>
+        <span style="width:44px"></span>
+      </div>
+      <h1 class="hero-title" style="text-align:center;">いっしょにワクワク</h1>
+      <div class="spin-stage">
+        <span class="spin-emoji" aria-hidden="true">🎲</span>
+        <p class="hero-lead" style="margin-top:1rem;">運命のプランを引いています…</p>
+      </div>
+    </section>
+
+    <section id="screen-roulette-result" class="screen" aria-label="ルーレット結果">
+      <div class="topbar">
+        <span style="width:44px"></span>
+        <span class="logo-pill">決定</span>
+        <span style="width:44px"></span>
+      </div>
+      <div class="result-card">
+        <span class="emoji" id="result-emoji">🎉</span>
+        <h2 id="result-title">--</h2>
+        <p id="result-description">--</p>
+        <p class="result-hashtag">#デートルーレット #カップルプラン</p>
+      </div>
+      <button id="btn-result-restart" class="btn-secondary" type="button">もう一度プランを選び直す</button>
+      <button id="btn-result-home" class="btn-primary" type="button">ホームへ戻る</button>
     </section>
   </div>
   <script type="module" src="./src/main.ts"></script>

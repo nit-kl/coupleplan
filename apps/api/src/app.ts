@@ -8,6 +8,7 @@ import type { AppRepository } from "./domain/repository";
 import { AccountUsecase } from "./usecases/accountUsecase";
 import { AuthUsecase } from "./usecases/authUsecase";
 import { CoupleUsecase } from "./usecases/coupleUsecase";
+import { RouletteUsecase } from "./usecases/rouletteUsecase";
 
 export type AppEnv = {
   NODE_ENV?: string;
@@ -102,6 +103,7 @@ export function createHonoApp(options: {
   const authUsecase = new AuthUsecase(repo, email, allowDebugOtp);
   const accountUsecase = new AccountUsecase(repo);
   const coupleUsecase = new CoupleUsecase(repo);
+  const rouletteUsecase = new RouletteUsecase(repo);
 
   const app = new Hono();
   const allowedOrigins = parseCorsOrigins(
@@ -233,6 +235,52 @@ export function createHonoApp(options: {
     }
   });
 
+  app.get("/roulette/plans", async (c) => {
+    try {
+      await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json({ plans: rouletteUsecase.listPlans() }, 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.get("/roulette/sessions/me", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await rouletteUsecase.getSessionView(user), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/roulette/sessions/me/votes", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json();
+      return c.json(await rouletteUsecase.submitVotes(user, body?.votes), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/roulette/sessions/me/spin", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await rouletteUsecase.spin(user), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/roulette/sessions/me/restart", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json(await rouletteUsecase.restart(user), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
   app.notFound((c) => c.json({ error: "not found", code: "not_found" }, 404));
 
   return app;
@@ -245,7 +293,7 @@ function handleError(
   if (err instanceof AppError) {
     return c.json(
       { error: err.message, code: err.code },
-      err.status as 400 | 401 | 404 | 409 | 410 | 429 | 500 | 503,
+      err.status as 400 | 401 | 404 | 409 | 410 | 412 | 429 | 500 | 503,
     );
   }
   const message = err instanceof Error ? err.message : String(err);
