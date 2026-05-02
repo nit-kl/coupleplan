@@ -278,6 +278,52 @@ async function run() {
     });
     assert(badVote.status === 400, "unknown plan should be rejected with 400");
 
+    // ---- ニンジャ (P1-4 / P1-5) ----
+    const ninjaMissions = await request("/ninja/missions", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    assert(ninjaMissions.status === 200, "ninja missions failed");
+    const missionId = ninjaMissions.data.missions?.[0]?.id;
+    assert(missionId, "ninja mission id missing");
+
+    const logA = await request("/ninja/logs", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ missionId }),
+    });
+    assert(logA.status === 200, "ninja log A failed");
+    const declaredPoint = logA.data.log?.point;
+    assert(typeof declaredPoint === "number", "ninja log point missing");
+
+    const weekBBefore = await request("/ninja/week", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenB}` },
+    });
+    assert(weekBBefore.status === 200, "ninja week B failed");
+    assert(
+      weekBBefore.data.partnerPoints === null,
+      "partner total should be hidden before publish",
+    );
+
+    const publishWeek = await request("/ninja/week/publish", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({}),
+    });
+    assert(publishWeek.status === 200, "ninja week publish failed");
+    assert(typeof publishWeek.data.myPoints === "number", "publish should return week view");
+
+    const weekBAfter = await request("/ninja/week", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenB}` },
+    });
+    assert(weekBAfter.status === 200, "ninja week B after publish failed");
+    assert(
+      weekBAfter.data.partnerPoints === declaredPoint,
+      "B should see A's total after publish",
+    );
+
     const deleteAccount = await request("/users/me", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${tokenA}` },
@@ -302,7 +348,7 @@ async function run() {
     });
     assert(meAfterDeleteB.status === 401, "deleted partner B token should be unauthorized");
 
-    console.log("P1-1/P1-2/P1-3 smoke test passed.");
+    console.log("P1-1/P1-2/P1-3/P1-4/P1-5 smoke test passed.");
   } finally {
     await stopLocalServer(server);
   }

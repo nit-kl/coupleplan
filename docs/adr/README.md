@@ -50,5 +50,7 @@
 - [0009-httpOnly-refresh-token-auth.md](./0009-httpOnly-refresh-token-auth.md)
 - [0010-accept-invite-from-pending-solo-member.md](./0010-accept-invite-from-pending-solo-member.md)
 - [0011-date-roulette-state.md](./0011-date-roulette-state.md)
+- [0012-silent-ninja-declarations.md](./0012-silent-ninja-declarations.md)
+- [0013-ninja-weekly-aggregation.md](./0013-ninja-weekly-aggregation.md)
 
 引き続き、判断前に実装しないこと。

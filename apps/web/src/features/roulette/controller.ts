@@ -26,6 +26,7 @@ const HOME_SCREEN_ID = "screen-home";
 
 function showHomeScreen(): void {
   hideAllRouletteScreens();
+  document.getElementById("screen-ninja")?.classList.remove("active");
   for (const id of ["start", "profile", "login", "pair", "done"]) {
     const el = document.getElementById(`screen-${id}`);
     if (el) el.classList.remove("active");

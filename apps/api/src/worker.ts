@@ -13,7 +13,7 @@ let appInstance: { key: string; hono: ReturnType<typeof createHonoApp> } | null 
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const key = `${env.RESEND_API_KEY ?? ""}|${env.ALLOWED_ORIGINS ?? ""}`;
+    const key = `${env.RESEND_API_KEY ?? ""}|${env.ALLOWED_ORIGINS ?? ""}|${env.NINJA_PUBLISH_SECRET ?? ""}`;
     if (!appInstance || appInstance.key !== key) {
       const repo = new D1Repository(env.DB);
       const email = createOtpEmailFromEnv(env);
