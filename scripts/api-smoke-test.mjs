@@ -1,4 +1,10 @@
 import { spawn } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const TSX_CLI = join(REPO_ROOT, "node_modules", "tsx", "dist", "cli.mjs");
+const API_ENTRY = join(REPO_ROOT, "apps", "api", "src", "server.ts");
 
 const BASE_URL = (process.env.API_BASE_URL ?? "http://127.0.0.1:8787").replace(/\/$/, "");
 const USE_REMOTE = Boolean(process.env.API_BASE_URL);
@@ -44,28 +50,57 @@ async function pingRemote() {
   }
 }
 
+/** CI（Linux）で `npm` / シェル子プロセスだけ終了し API が残るとジョブがハングするため、tsx を直接起動して PID で確実に止める */
+async function stopLocalServer(proc) {
+  if (!proc) return;
+  await new Promise((resolve) => {
+    let settled = false;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let forceKillTimer;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      if (forceKillTimer !== undefined) clearTimeout(forceKillTimer);
+      resolve();
+    };
+    proc.once("exit", done);
+    forceKillTimer = setTimeout(() => {
+      try {
+        if (process.platform === "win32") {
+          spawn("taskkill", ["/PID", String(proc.pid), "/T", "/F"], { stdio: "ignore", shell: true });
+        } else {
+          process.kill(proc.pid, "SIGKILL");
+        }
+      } catch {
+        // ignore
+      }
+      done();
+    }, 5000);
+
+    try {
+      if (process.platform === "win32") {
+        spawn("taskkill", ["/PID", String(proc.pid), "/T", "/F"], { stdio: "ignore", shell: true });
+      } else {
+        proc.kill("SIGTERM");
+      }
+    } catch {
+      done();
+    }
+  });
+}
+
 async function run() {
   let server = null;
 
   if (!USE_REMOTE) {
-    const runner = "npm run api:dev";
-    server = spawn(runner, {
+    server = spawn(process.execPath, [TSX_CLI, API_ENTRY], {
+      cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      shell: true,
+      env: process.env,
     });
     server.stdout.on("data", (chunk) => process.stdout.write(`[api] ${chunk}`));
     server.stderr.on("data", (chunk) => process.stderr.write(`[api:err] ${chunk}`));
   }
-
-  const cleanup = () => {
-    if (server && !server.killed) {
-      if (process.platform === "win32") {
-        spawn("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore", shell: true });
-      } else {
-        server.kill("SIGTERM");
-      }
-    }
-  };
 
   try {
     if (USE_REMOTE) {
@@ -269,7 +304,7 @@ async function run() {
 
     console.log("P1-1/P1-2/P1-3 smoke test passed.");
   } finally {
-    cleanup();
+    await stopLocalServer(server);
   }
 }
 
