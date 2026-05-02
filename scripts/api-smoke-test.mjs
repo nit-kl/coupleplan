@@ -306,12 +306,13 @@ async function run() {
       "partner total should be hidden before publish",
     );
 
-    const publishWeek = await request("/ninja/jobs/publish-week", {
+    const publishWeek = await request("/ninja/week/publish", {
       method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
       body: JSON.stringify({}),
     });
-    assert(publishWeek.status === 200, "ninja publish-week failed");
-    assert(publishWeek.data.couplesPublished >= 1, "publish should touch at least one couple");
+    assert(publishWeek.status === 200, "ninja week publish failed");
+    assert(typeof publishWeek.data.myPoints === "number", "publish should return week view");
 
     const weekBAfter = await request("/ninja/week", {
       method: "GET",

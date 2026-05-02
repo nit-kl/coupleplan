@@ -319,7 +319,7 @@ paths:
   /ninja/week:
     get:
       tags: [ninja]
-      summary: Current JST week view (own logs always; partner total after publish job)
+      summary: Current JST week view (own logs always; partner total after couple-triggered or bulk publish)
       security:
         - bearerAuth: []
       responses:
@@ -331,10 +331,30 @@ paths:
                 $ref: "#/components/schemas/NinjaWeekView"
         "412":
           description: Active couple is required
+  /ninja/week/publish:
+    post:
+      tags: [ninja]
+      summary: Publish this couple's weekly totals (either partner may trigger; idempotent)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinjaPublishWeekRequest"
+      responses:
+        "200":
+          description: Updated weekly ninja view after publish
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinjaWeekView"
+        "412":
+          description: Active couple is required
   /ninja/jobs/publish-week:
     post:
       tags: [ninja]
-      summary: Aggregate and publish weekly ninja totals for all active couples (job secret in production)
+      summary: Bulk publish all active couples (ops/backfill; prefer POST /ninja/week/publish per couple)
       requestBody:
         content:
           application/json:

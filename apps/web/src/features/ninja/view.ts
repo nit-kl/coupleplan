@@ -50,9 +50,14 @@ export function renderNinjaWeek(week: NinjaWeekView): void {
       panel.hidden = false;
       panel.innerHTML = `
         <p class="hero-lead" style="margin:0; font-size:0.95rem;">あなたの今週の合計: <strong>${week.myPoints}pt</strong></p>
-        <p class="hero-lead" style="margin:0.45rem 0 0; font-size:0.88rem; color:var(--ink-soft);">相手の合計は週次ジョブ公開後に表示されます。</p>
+        <p class="hero-lead" style="margin:0.45rem 0 0; font-size:0.88rem; color:var(--ink-soft);">相手の合計は、下の「公開する」を押すまで非表示です。ふたりでよいタイミングを選んでください。</p>
       `;
     }
+  }
+
+  const pubBtn = document.getElementById("ninja-publish-week") as HTMLButtonElement | null;
+  if (pubBtn) {
+    pubBtn.hidden = week.publishedAt !== null;
   }
 
   const logEl = document.getElementById("ninja-my-log");

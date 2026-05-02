@@ -15,3 +15,7 @@ export function postNinjaLog(
 ): Promise<{ log: { id: string; missionId: string; title: string; point: number; createdAt: string } }> {
   return requestJson("/ninja/logs", "POST", { accessToken, body: { missionId } });
 }
+
+export function publishNinjaWeek(accessToken: string): Promise<NinjaWeekView> {
+  return requestJson<NinjaWeekView>("/ninja/week/publish", "POST", { accessToken, body: {} });
+}

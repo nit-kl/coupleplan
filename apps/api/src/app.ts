@@ -312,6 +312,16 @@ export function createHonoApp(options: {
     }
   });
 
+  app.post("/ninja/week/publish", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json().catch(() => ({}));
+      return c.json(await ninjaUsecase.publishMyWeek(user, body), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
   app.post("/ninja/jobs/publish-week", async (c) => {
     try {
       const body = await c.req.json().catch(() => ({}));

@@ -49,6 +49,26 @@ function assertNinjaJobAuthorized(
   }
 }
 
+function parseWeekStartFromBody(rawBody: unknown): string {
+  if (
+    typeof rawBody === "object" &&
+    rawBody !== null &&
+    "weekStart" in rawBody &&
+    typeof (rawBody as { weekStart: unknown }).weekStart === "string"
+  ) {
+    const weekStart = (rawBody as { weekStart: string }).weekStart.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
+      throw new AppError(400, "invalid_week_start", "weekStart must be YYYY-MM-DD");
+    }
+    const anchor = new Date(`${weekStart}T12:00:00+09:00`);
+    if (jstDayOfWeekMon0(anchor) !== 0) {
+      throw new AppError(400, "invalid_week_start", "weekStart must be a Monday (Asia/Tokyo)");
+    }
+    return weekStart;
+  }
+  return jstWeekRangeContaining(new Date()).weekStart;
+}
+
 export class NinjaUsecase {
   constructor(private readonly repo: AppRepository) {}
 
@@ -97,6 +117,47 @@ export class NinjaUsecase {
     };
   }
 
+  private async publishOneCoupleWeek(
+    coupleId: string,
+    weekStart: string,
+    publishedAt: string,
+  ): Promise<void> {
+    const couple = await this.repo.getCoupleById(coupleId);
+    if (!couple || couple.memberIds.length !== 2) return;
+    const anchor = new Date(`${weekStart}T12:00:00+09:00`);
+    const { startIso, endIso } = jstWeekRangeContaining(anchor);
+    const ownerUserId = couple.memberIds[0]!;
+    const partnerUserId = couple.memberIds[1]!;
+    const logs = await this.repo.listNinjaLogsInRange(coupleId, startIso, endIso);
+    let ownerPoints = 0;
+    let partnerPoints = 0;
+    for (const l of logs) {
+      if (l.userId === ownerUserId) ownerPoints += l.point;
+      else if (l.userId === partnerUserId) partnerPoints += l.point;
+    }
+    const existing = await this.repo.getNinjaWeeklySummary(coupleId, weekStart);
+    const summary: NinjaWeeklySummary = {
+      id: existing?.id ?? this.repo.newId("nws"),
+      coupleId,
+      weekStart,
+      ownerUserId,
+      partnerUserId,
+      ownerPoints,
+      partnerPoints,
+      publishedAt,
+    };
+    await this.repo.upsertNinjaWeeklySummary(summary);
+  }
+
+  /** ログインユーザーのカップルについて、週の合計を確定して双方に公開する（タイミングはカップル任せ） */
+  async publishMyWeek(user: User, rawBody: unknown): Promise<NinjaWeekView> {
+    const { coupleId } = await this.ensureActiveCouple(user);
+    const weekStart = parseWeekStartFromBody(rawBody);
+    const now = this.repo.nowIso();
+    await this.publishOneCoupleWeek(coupleId, weekStart, now);
+    return this.getWeek(user);
+  }
+
   async getWeek(user: User): Promise<NinjaWeekView> {
     const { coupleId } = await this.ensureActiveCouple(user);
     const { weekStart, startIso, endIso } = jstWeekRangeContaining(new Date());
@@ -132,66 +193,19 @@ export class NinjaUsecase {
     };
   }
 
+  /** 全 active カップル一括。運用・バックフィル用。本番はシークレット必須。 */
   async publishWeek(
     appEnv: JobEnv | undefined,
     authHeader: string | undefined,
     rawBody: unknown,
   ): Promise<{ weekStart: string; couplesPublished: number }> {
     assertNinjaJobAuthorized(appEnv, authHeader);
-
-    let weekStart: string;
-    if (
-      typeof rawBody === "object" &&
-      rawBody !== null &&
-      "weekStart" in rawBody &&
-      typeof (rawBody as { weekStart: unknown }).weekStart === "string"
-    ) {
-      weekStart = (rawBody as { weekStart: string }).weekStart.trim();
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
-        throw new AppError(400, "invalid_week_start", "weekStart must be YYYY-MM-DD");
-      }
-      const anchor = new Date(`${weekStart}T12:00:00+09:00`);
-      if (jstDayOfWeekMon0(anchor) !== 0) {
-        throw new AppError(400, "invalid_week_start", "weekStart must be a Monday (Asia/Tokyo)");
-      }
-    } else {
-      weekStart = jstWeekRangeContaining(new Date()).weekStart;
-    }
-
-    const anchor = new Date(`${weekStart}T12:00:00+09:00`);
-    const { startIso, endIso } = jstWeekRangeContaining(anchor);
-
+    const weekStart = parseWeekStartFromBody(rawBody);
     const coupleIds = await this.repo.listActiveCoupleIds();
-    let couplesPublished = 0;
     const now = this.repo.nowIso();
-
     for (const cid of coupleIds) {
-      const couple = await this.repo.getCoupleById(cid);
-      if (!couple || couple.memberIds.length !== 2) continue;
-      const ownerUserId = couple.memberIds[0]!;
-      const partnerUserId = couple.memberIds[1]!;
-      const logs = await this.repo.listNinjaLogsInRange(cid, startIso, endIso);
-      let ownerPoints = 0;
-      let partnerPoints = 0;
-      for (const l of logs) {
-        if (l.userId === ownerUserId) ownerPoints += l.point;
-        else if (l.userId === partnerUserId) partnerPoints += l.point;
-      }
-      const existing = await this.repo.getNinjaWeeklySummary(cid, weekStart);
-      const summary: NinjaWeeklySummary = {
-        id: existing?.id ?? this.repo.newId("nws"),
-        coupleId: cid,
-        weekStart,
-        ownerUserId,
-        partnerUserId,
-        ownerPoints,
-        partnerPoints,
-        publishedAt: now,
-      };
-      await this.repo.upsertNinjaWeeklySummary(summary);
-      couplesPublished += 1;
+      await this.publishOneCoupleWeek(cid, weekStart, now);
     }
-
-    return { weekStart, couplesPublished };
+    return { weekStart, couplesPublished: coupleIds.length };
   }
 }

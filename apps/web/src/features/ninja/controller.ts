@@ -1,5 +1,5 @@
 import { getAccessToken } from "../../shared/session/sessionStore";
-import { getNinjaMissions, getNinjaWeek, postNinjaLog } from "./api";
+import { getNinjaMissions, getNinjaWeek, postNinjaLog, publishNinjaWeek } from "./api";
 import type { NinjaMissionCard } from "./types";
 import { renderNinjaMissions, renderNinjaWeek, showNinjaScreen } from "./view";
 
@@ -46,6 +46,17 @@ export function startNinjaController(): void {
   bindClick("ninja-refresh", async () => {
     try {
       await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  bindClick("ninja-publish-week", async () => {
+    try {
+      const token = ensureToken();
+      const week = await publishNinjaWeek(token);
+      renderNinjaWeek(week);
+      if (missionsCache.length > 0) renderNinjaMissions(missionsCache);
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     }
