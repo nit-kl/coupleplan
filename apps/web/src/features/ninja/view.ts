@@ -1,5 +1,22 @@
 import type { NinjaMissionCard, NinjaWeekView } from "./types";
 
+function getMissionTone(point: number): string {
+  if (point <= 3) return "サクッと";
+  if (point <= 5) return "しっかり";
+  return "とっておき";
+}
+
+function getPointMood(points: number): string {
+  if (points >= 24) return "最強の気づかいニンジャ";
+  if (points >= 14) return "ナイス連携ニンジャ";
+  if (points >= 6) return "じわっと貢献ニンジャ";
+  return "これから本気ニンジャ";
+}
+
+function countActionDays(isoTimestamps: string[]): number {
+  return new Set(isoTimestamps.map((v) => v.slice(0, 10))).size;
+}
+
 export function showNinjaScreen(): void {
   document.querySelectorAll(".screen").forEach((el) => {
     el.classList.remove("active");
@@ -15,8 +32,11 @@ export function renderNinjaMissions(missions: NinjaMissionCard[]): void {
     .map(
       (m) => `
     <button type="button" class="ninja-mission-btn" data-mission-id="${m.id}">
-      <span class="nj-emoji" aria-hidden="true">${m.emoji}</span>
-      <strong>${m.title}</strong>
+      <div class="nj-head">
+        <span class="nj-emoji" aria-hidden="true">${m.emoji}</span>
+        <strong>${m.title}</strong>
+        <span class="nj-tag">${getMissionTone(m.point)}</span>
+      </div>
       <div class="nj-meta">${m.description} · <strong>+${m.point}pt</strong></div>
     </button>`,
     )
@@ -24,9 +44,12 @@ export function renderNinjaMissions(missions: NinjaMissionCard[]): void {
 }
 
 export function renderNinjaWeek(week: NinjaWeekView): void {
+  const actionDays = countActionDays(week.myLogs.map((l) => l.createdAt));
+  const pointMood = getPointMood(week.myPoints);
+
   const summary = document.getElementById("ninja-week-summary");
   if (summary) {
-    summary.textContent = `今週（月 ${week.weekStart} 〜 日 ${week.weekEnd}）`;
+    summary.textContent = `今週（月 ${week.weekStart} 〜 日 ${week.weekEnd}）・${actionDays}日アクション`;
   }
 
   const panel = document.getElementById("ninja-score-panel");
@@ -42,15 +65,16 @@ export function renderNinjaWeek(week: NinjaWeekView): void {
             : "今週は同点！";
       panel.hidden = false;
       panel.innerHTML = `
-        <p class="hero-lead" style="margin:0 0 0.5rem; font-size:0.95rem;">週次の合計が公開されました</p>
-        <p style="margin:0; font-weight:800; font-size:1.1rem;">あなた <strong>${week.myPoints}pt</strong>　／　相手 <strong>${week.partnerPoints}pt</strong></p>
-        <p class="hero-lead" style="margin:0.6rem 0 0; font-size:0.92rem;">${lead}</p>
+        <p class="ninja-panel-kicker">ふたりの今週スコアを公開しました</p>
+        <p class="ninja-panel-score">あなた <strong>${week.myPoints}pt</strong>　／　相手 <strong>${week.partnerPoints}pt</strong></p>
+        <p class="ninja-panel-note">${lead}</p>
       `;
     } else {
       panel.hidden = false;
       panel.innerHTML = `
-        <p class="hero-lead" style="margin:0; font-size:0.95rem;">あなたの今週の合計: <strong>${week.myPoints}pt</strong></p>
-        <p class="hero-lead" style="margin:0.45rem 0 0; font-size:0.88rem; color:var(--ink-soft);">相手の合計は、下の「公開する」を押すまで非表示です。ふたりでよいタイミングを選んでください。</p>
+        <p class="ninja-panel-kicker">あなたの今週スコア</p>
+        <p class="ninja-panel-score"><strong>${week.myPoints}pt</strong> <span class="ninja-mood-chip">${pointMood}</span></p>
+        <p class="ninja-panel-note">相手の合計は「公開する」まで見えません。準備ができたらふたりでオープン。</p>
       `;
     }
   }
@@ -58,6 +82,14 @@ export function renderNinjaWeek(week: NinjaWeekView): void {
   const pubBtn = document.getElementById("ninja-publish-week") as HTMLButtonElement | null;
   if (pubBtn) {
     pubBtn.hidden = week.publishedAt !== null;
+  }
+
+  const publishHint = document.getElementById("ninja-publish-hint");
+  if (publishHint) {
+    publishHint.textContent =
+      week.publishedAt === null
+        ? "公開すると、ふたりの合計だけ表示されます（内訳はずっと非公開）"
+        : "今週は公開済み。来週もコツコツ貯めていきましょう。";
   }
 
   const logEl = document.getElementById("ninja-my-log");
@@ -74,4 +106,14 @@ export function renderNinjaWeek(week: NinjaWeekView): void {
         .join("");
     }
   }
+}
+
+export function flashNinjaCheer(message: string): void {
+  const cheer = document.getElementById("ninja-cheer");
+  if (!cheer) return;
+  cheer.textContent = message;
+  cheer.hidden = false;
+  window.setTimeout(() => {
+    cheer.hidden = true;
+  }, 1600);
 }

@@ -294,6 +294,30 @@
       display: grid;
       gap: 0.6rem;
     }
+    .ninja-hero-card {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 236, 243, 0.88));
+      border: 1px solid #f1d5df;
+    }
+    .ninja-mini-kicker {
+      display: inline-block;
+      margin-bottom: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #a56a92;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #f0d6e2;
+      border-radius: 999px;
+      padding: 0.2rem 0.62rem;
+    }
+    .ninja-cheer {
+      margin-top: 0.65rem;
+      color: #b35c80;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid #f2d7e2;
+      border-radius: 12px;
+      padding: 0.5rem 0.68rem;
+    }
     .ninja-mission-btn {
       text-align: left;
       width: 100%;
@@ -305,11 +329,66 @@
       cursor: pointer;
       line-height: 1.45;
     }
+    .ninja-mission-btn:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
+    .ninja-mission-btn .nj-head {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.2rem;
+    }
+    .ninja-mission-btn .nj-tag {
+      margin-left: auto;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #8d5b7f;
+      background: #faedf3;
+      border: 1px solid #f0d6e2;
+      border-radius: 999px;
+      padding: 0.14rem 0.45rem;
+    }
     .ninja-mission-btn:active {
       transform: scale(0.99);
     }
-    .ninja-mission-btn .nj-emoji { font-size: 1.6rem; margin-right: 0.5rem; vertical-align: middle; }
+    .ninja-mission-btn .nj-emoji { font-size: 1.6rem; vertical-align: middle; }
     .ninja-mission-btn .nj-meta { color: var(--ink-soft); font-size: 0.85rem; margin-top: 0.2rem; }
+    .ninja-panel-kicker {
+      margin: 0 0 0.34rem;
+      color: #a06f89;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .ninja-panel-score {
+      margin: 0;
+      font-weight: 800;
+      font-size: 1.12rem;
+      line-height: 1.45;
+    }
+    .ninja-panel-note {
+      margin: 0.46rem 0 0;
+      color: var(--ink-soft);
+      font-size: 0.88rem;
+    }
+    .ninja-mood-chip {
+      display: inline-block;
+      font-size: 0.79rem;
+      font-weight: 700;
+      color: #916485;
+      background: #faedf3;
+      border: 1px solid #efd4e0;
+      border-radius: 999px;
+      padding: 0.15rem 0.5rem;
+      margin-left: 0.28rem;
+      vertical-align: middle;
+    }
+    #ninja-publish-hint {
+      font-size: 0.84rem;
+      color: var(--ink-soft);
+      margin: 0.35rem 0 0.8rem;
+      line-height: 1.55;
+    }
 
     /* LP (#screen-start) */
     #screen-start {
@@ -1222,17 +1301,23 @@
         <span style="width:44px"></span>
       </div>
       <h1 class="hero-title">サイレント・ニンジャ</h1>
-      <p id="ninja-week-summary" class="hero-lead">今週の記録を読み込んでいます…</p>
-      <div id="ninja-score-panel" class="card" hidden></div>
+      <p class="hero-lead">生活のモヤモヤを、ゲームみたいに軽く片づけよう。</p>
+      <div class="card ninja-hero-card">
+        <span class="ninja-mini-kicker">今日のミッションボード</span>
+        <p id="ninja-week-summary" class="hero-lead" style="margin-bottom:0.55rem;">今週の記録を読み込んでいます…</p>
+        <div id="ninja-score-panel" hidden></div>
+        <p id="ninja-cheer" class="ninja-cheer" role="status" hidden>記録を反映しました。</p>
+      </div>
       <button id="ninja-publish-week" class="btn-primary" type="button" hidden>今週の合計をふたりに公開する</button>
+      <p id="ninja-publish-hint"></p>
       <div class="card">
-        <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">やったことをタップしてポイントをためよう（相手には内訳は見えません）</p>
+        <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">できたことをタップするだけ。内訳は相手に見えないから、気楽に続けられます。</p>
         <div id="ninja-mission-list" class="ninja-mission-grid"></div>
       </div>
       <div class="card">
-        <p class="hero-lead" style="font-size:0.9rem; margin-bottom:0.5rem;">自分の申告一覧</p>
+        <p class="hero-lead" style="font-size:0.9rem; margin-bottom:0.5rem;">わたしの記録</p>
         <ul id="ninja-my-log" class="match-list"></ul>
-        <button id="ninja-refresh" class="btn-secondary" type="button">週の状況を更新</button>
+        <button id="ninja-refresh" class="btn-secondary" type="button">最新に更新</button>
       </div>
     </section>
 

@@ -1,7 +1,7 @@
 import { getAccessToken } from "../../shared/session/sessionStore";
 import { getNinjaMissions, getNinjaWeek, postNinjaLog, publishNinjaWeek } from "./api";
 import type { NinjaMissionCard } from "./types";
-import { renderNinjaMissions, renderNinjaWeek, showNinjaScreen } from "./view";
+import { flashNinjaCheer, renderNinjaMissions, renderNinjaWeek, showNinjaScreen } from "./view";
 
 function ensureToken(): string {
   const token = getAccessToken();
@@ -68,14 +68,19 @@ export function startNinjaController(): void {
     if (!btn) return;
     const missionId = btn.dataset.missionId;
     if (!missionId) return;
+    if (btn.disabled) return;
     try {
+      btn.disabled = true;
       const token = ensureToken();
-      await postNinjaLog(token, missionId);
+      const result = await postNinjaLog(token, missionId);
       const week = await getNinjaWeek(token);
       renderNinjaWeek(week);
       if (missionsCache.length > 0) renderNinjaMissions(missionsCache);
+      flashNinjaCheer(`+${result.log.point}pt「${result.log.title}」を記録しました`);
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      btn.disabled = false;
     }
   });
 }
