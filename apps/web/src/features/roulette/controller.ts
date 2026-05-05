@@ -108,7 +108,7 @@ export function startRouletteController(): void {
   function renderCurrentSwipeFrame(): void {
     const s = state.get();
     const plan = s.plans[s.cursor];
-    setSwipeStatus("相手には見えません。直感でOK。");
+    setSwipeStatus("相手の画面には出ません。好きなペースで、直感のまま選んでね。");
     setSwipeProgress(s.cursor, s.plans.length);
     setRestartSwipeVisible(s.pendingVotes.size > 0 || s.cursor > 0);
     if (plan) {
@@ -145,7 +145,7 @@ export function startRouletteController(): void {
       if (votes.length === 0) {
         throw new Error("先にプランへ「いいね/パス」を入れてください。");
       }
-      setSwipeStatus("送信中…");
+      setSwipeStatus("送信中… そのまま少し待ってね。");
       const session = await submitVotes(token, votes);
       state.setSession(session);
       routeByStatus(session);
