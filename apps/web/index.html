@@ -389,6 +389,11 @@
       margin: 0.35rem 0 0.8rem;
       line-height: 1.55;
     }
+    .ninja-week-actions {
+      display: grid;
+      gap: 0.45rem;
+      margin-top: 0.2rem;
+    }
 
     /* LP (#screen-start) */
     #screen-start {
@@ -1308,7 +1313,10 @@
         <div id="ninja-score-panel" hidden></div>
         <p id="ninja-cheer" class="ninja-cheer" role="status" hidden>記録を反映しました。</p>
       </div>
-      <button id="ninja-publish-week" class="btn-primary" type="button" hidden>今週の合計をふたりに公開する</button>
+      <div class="ninja-week-actions">
+        <button id="ninja-publish-week" class="btn-primary" type="button" hidden>今週の合計をふたりに公開する</button>
+        <button id="ninja-reset-week" class="btn-secondary" type="button" hidden>公開をリセットする</button>
+      </div>
       <p id="ninja-publish-hint"></p>
       <div class="card">
         <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">できたことをタップするだけ。内訳は相手に見えないから、気楽に続けられます。</p>

@@ -76,5 +76,6 @@ export interface AppRepository {
   listNinjaLogsInRange(coupleId: string, startIso: string, endIso: string): Promise<NinjaLog[]>;
   getNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<NinjaWeeklySummary | null>;
   upsertNinjaWeeklySummary(summary: NinjaWeeklySummary): Promise<void>;
+  deleteNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<void>;
   listActiveCoupleIds(): Promise<string[]>;
 }

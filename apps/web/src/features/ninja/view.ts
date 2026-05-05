@@ -83,13 +83,17 @@ export function renderNinjaWeek(week: NinjaWeekView): void {
   if (pubBtn) {
     pubBtn.hidden = week.publishedAt !== null;
   }
+  const resetBtn = document.getElementById("ninja-reset-week") as HTMLButtonElement | null;
+  if (resetBtn) {
+    resetBtn.hidden = week.publishedAt === null;
+  }
 
   const publishHint = document.getElementById("ninja-publish-hint");
   if (publishHint) {
     publishHint.textContent =
       week.publishedAt === null
         ? "公開すると、ふたりの合計だけ表示されます（内訳はずっと非公開）"
-        : "今週は公開済み。来週もコツコツ貯めていきましょう。";
+        : "今週は公開済み。必要なら「公開をリセット」で非公開に戻せます（記録は消えません）。";
   }
 
   const logEl = document.getElementById("ninja-my-log");

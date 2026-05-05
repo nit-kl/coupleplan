@@ -158,6 +158,14 @@ export class NinjaUsecase {
     return this.getWeek(user);
   }
 
+  /** ログは残したまま、週次の公開状態のみ解除する */
+  async resetMyWeek(user: User, rawBody: unknown): Promise<NinjaWeekView> {
+    const { coupleId } = await this.ensureActiveCouple(user);
+    const weekStart = parseWeekStartFromBody(rawBody);
+    await this.repo.deleteNinjaWeeklySummary(coupleId, weekStart);
+    return this.getWeek(user);
+  }
+
   async getWeek(user: User): Promise<NinjaWeekView> {
     const { coupleId } = await this.ensureActiveCouple(user);
     const { weekStart, startIso, endIso } = jstWeekRangeContaining(new Date());

@@ -334,6 +334,10 @@ export class InMemoryRepository implements AppRepository {
     this.ninjaWeeklySummaries.set(`${summary.coupleId}\t${summary.weekStart}`, { ...summary });
   }
 
+  async deleteNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<void> {
+    this.ninjaWeeklySummaries.delete(`${coupleId}\t${weekStart}`);
+  }
+
   async listActiveCoupleIds(): Promise<string[]> {
     return Array.from(this.couples.values())
       .filter((c) => c.status === "active" && c.memberIds.length === 2)

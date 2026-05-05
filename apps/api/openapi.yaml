@@ -351,6 +351,26 @@ paths:
                 $ref: "#/components/schemas/NinjaWeekView"
         "412":
           description: Active couple is required
+  /ninja/week/reset:
+    post:
+      tags: [ninja]
+      summary: Reset this couple's weekly publish state (unpublish only; logs remain)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinjaPublishWeekRequest"
+      responses:
+        "200":
+          description: Updated weekly ninja view after reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinjaWeekView"
+        "412":
+          description: Active couple is required
   /ninja/jobs/publish-week:
     post:
       tags: [ninja]

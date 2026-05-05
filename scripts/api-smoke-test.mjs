@@ -324,6 +324,24 @@ async function run() {
       "B should see A's total after publish",
     );
 
+    const resetWeek = await request("/ninja/week/reset", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({}),
+    });
+    assert(resetWeek.status === 200, "ninja week reset failed");
+    assert(resetWeek.data.partnerPoints === null, "reset should hide partner points again");
+
+    const weekBAfterReset = await request("/ninja/week", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenB}` },
+    });
+    assert(weekBAfterReset.status === 200, "ninja week B after reset failed");
+    assert(
+      weekBAfterReset.data.partnerPoints === null,
+      "B should not see partner total after reset",
+    );
+
     const deleteAccount = await request("/users/me", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${tokenA}` },

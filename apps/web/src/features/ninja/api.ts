@@ -19,3 +19,7 @@ export function postNinjaLog(
 export function publishNinjaWeek(accessToken: string): Promise<NinjaWeekView> {
   return requestJson<NinjaWeekView>("/ninja/week/publish", "POST", { accessToken, body: {} });
 }
+
+export function resetNinjaWeek(accessToken: string): Promise<NinjaWeekView> {
+  return requestJson<NinjaWeekView>("/ninja/week/reset", "POST", { accessToken, body: {} });
+}

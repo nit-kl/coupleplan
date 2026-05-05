@@ -583,6 +583,13 @@ export class D1Repository implements AppRepository {
       .run();
   }
 
+  async deleteNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<void> {
+    await this.db
+      .prepare(`DELETE FROM ninja_weekly_summaries WHERE couple_id = ? AND week_start = ?`)
+      .bind(coupleId, weekStart)
+      .run();
+  }
+
   async listActiveCoupleIds(): Promise<string[]> {
     const res = await this.db
       .prepare(
