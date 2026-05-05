@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>CouplePlan Web</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --cream: #f7f3e9;
@@ -308,25 +311,189 @@
     .ninja-mission-btn .nj-emoji { font-size: 1.6rem; margin-right: 0.5rem; vertical-align: middle; }
     .ninja-mission-btn .nj-meta { color: var(--ink-soft); font-size: 0.85rem; margin-top: 0.2rem; }
 
+    /* LP (#screen-start) */
+    #screen-start {
+      position: relative;
+    }
+    #screen-start .lp-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 90% 55% at 15% -5%, rgba(255, 217, 198, 0.55), transparent 58%),
+        radial-gradient(ellipse 75% 50% at 100% 15%, rgba(222, 124, 150, 0.12), transparent 52%),
+        radial-gradient(ellipse 65% 45% at 45% 105%, rgba(131, 183, 154, 0.14), transparent 48%);
+    }
+    #screen-start .lp-stack {
+      position: relative;
+      z-index: 1;
+    }
+    #screen-start .lp-hero {
+      margin-bottom: 1.25rem;
+    }
+    #screen-start .lp-hero-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+      padding: 1.1rem 1rem;
+      border-radius: var(--radius-xl);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 237, 244, 0.85));
+      border: 1px solid rgba(244, 211, 220, 0.9);
+      box-shadow: var(--card-shadow);
+    }
+    #screen-start .lp-emoji-bubble {
+      font-size: clamp(2.5rem, 10vw, 3.5rem);
+      line-height: 1;
+      animation: lpFloat 4s ease-in-out infinite;
+    }
+    #screen-start .lp-emoji-bubble:nth-child(2) { animation-delay: 0.5s; }
+    #screen-start .lp-emoji-bubble:nth-child(3) { animation-delay: 1s; }
+    @keyframes lpFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    #screen-start .lp-title {
+      font-size: clamp(1.55rem, 5vw, 2.15rem);
+      font-weight: 800;
+      line-height: 1.3;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    #screen-start .lp-lead {
+      font-size: clamp(1.02rem, 3.2vw, 1.2rem);
+      color: var(--ink-soft);
+      line-height: 1.65;
+      margin: 0 0 0.5rem;
+    }
+    #screen-start .lp-preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 520px) {
+      #screen-start .lp-preview-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    #screen-start .lp-preview-card {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 0.95rem 0.85rem;
+      box-shadow: 0 4px 16px rgba(96, 86, 113, 0.06);
+    }
+    #screen-start .lp-preview-card .lp-preview-emoji {
+      font-size: 2rem;
+      line-height: 1;
+      display: block;
+      margin-bottom: 0.45rem;
+    }
+    #screen-start .lp-preview-card h2 {
+      font-size: clamp(0.98rem, 3vw, 1.08rem);
+      font-weight: 800;
+      margin: 0 0 0.35rem;
+      line-height: 1.35;
+    }
+    #screen-start .lp-preview-card p {
+      margin: 0;
+      font-size: clamp(0.88rem, 2.6vw, 0.95rem);
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+    #screen-start .lp-trust {
+      margin-bottom: 1rem;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.65);
+      overflow: hidden;
+    }
+    #screen-start .lp-trust summary {
+      cursor: pointer;
+      font-weight: 700;
+      font-size: clamp(0.92rem, 2.8vw, 1rem);
+      padding: 0.85rem 1rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    #screen-start .lp-trust summary::-webkit-details-marker { display: none; }
+    #screen-start .lp-trust summary::after {
+      content: "＋";
+      color: var(--ink-soft);
+      font-weight: 800;
+    }
+    #screen-start .lp-trust[open] summary::after {
+      content: "ー";
+    }
+    #screen-start .lp-trust-body {
+      padding: 0 1rem 1rem;
+      font-size: clamp(0.88rem, 2.6vw, 0.95rem);
+      color: var(--ink-soft);
+      line-height: 1.55;
+      border-top: 1px solid rgba(232, 223, 206, 0.8);
+    }
+    #screen-start .lp-trust-body ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.15rem;
+    }
+    #screen-start .lp-trust-body li + li {
+      margin-top: 0.45rem;
+    }
+    #screen-start .lp-cta-hint {
+      font-size: clamp(0.95rem, 2.8vw, 1.02rem);
+      color: var(--ink-soft);
+      margin: 0 0 0.75rem;
+      line-height: 1.5;
+    }
+
   </style>
 </head>
 <body>
   <div class="app">
     <section id="screen-start" class="screen active" aria-label="登録開始">
-      <div class="topbar"><span class="logo-pill">CouplePlan</span></div>
-      <h1 class="hero-title">ふたりの予定づくりを<br />軽く、楽しく</h1>
-      <p class="hero-lead">CouplePlanは、カップルで別アカウントを作り、招待コードで安全につながるMVPです。メール認証だけで登録・再ログインできます。</p>
-      <ul class="feature-list">
-        <li><strong>メールOTPで開始</strong><br />パスワード不要。6桁コードで初回登録と再ログインを兼ねます。</li>
-        <li><strong>招待コードでペア連携</strong><br />先に登録した人がコードを共有し、相手が参加します。</li>
-        <li><strong>退会時は全データ削除</strong><br />ホームから、ふたりの連携データをまとめて削除できます。</li>
-      </ul>
-      <div class="card">
-        <div class="stepper"><span class="on">1</span><span>2</span><span>3</span><span>4</span></div>
-        <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">初めての方は役割を選んで登録へ進みます。</p>
-        <button id="go-inviter" class="btn-primary" type="button">先に登録（招待コードを出す側）</button>
-        <button id="go-invitee" class="btn-secondary" type="button">あとから参加（コードを受け取った側）</button>
-        <button id="go-login" class="btn-secondary" type="button">登録済みの方はこちら（再ログイン）</button>
+      <div class="lp-bg" aria-hidden="true"></div>
+      <div class="lp-stack">
+        <div class="topbar"><span class="logo-pill">CouplePlan</span></div>
+        <header class="lp-hero">
+          <h1 class="lp-title">もっと楽しく、ふたりの毎日を。</h1>
+          <p class="lp-lead">カップル・夫婦・同棲カップルの小さな悩みをためのポータル型アプリです</p>
+        </header>
+        <div class="lp-preview-grid" aria-label="アプリの中身">
+          <article class="lp-preview-card">
+            <span class="lp-preview-emoji" aria-hidden="true">🎲</span>
+            <h2>デートルーレット</h2>
+            <p>プランをスワイプしていいね。お互いが選んだ候補だけがルーレットにのり、抽選で今週のデートが決まります。</p>
+          </article>
+          <article class="lp-preview-card">
+            <span class="lp-preview-emoji" aria-hidden="true">🥷</span>
+            <h2>サイレント・ニンジャ</h2>
+            <p>やった家事をそっと申告。相手にすぐは知られず、週末にポイントとあわせて開示されます。ポイントが高いほうにご褒美があります。</p>
+          </article>
+        </div>
+        <details class="lp-trust">
+          <summary>ログイン方法やデータについて</summary>
+          <div class="lp-trust-body">
+            <p>細かいところはこちら。読まなくてもそのまま始められます。</p>
+            <ul>
+              <li><strong>メールだけ</strong>　パスワードなし。届いた6桁のコードで登録・再ログインできます。</li>
+              <li><strong>ふたりでペア</strong>　先に登録した方から出る招待コードを、相手が入力してつながります。</li>
+              <li><strong>やめたいとき</strong>　ホームから退会すると、あなたとパートナーのデータをまとめて削除できます。</li>
+            </ul>
+          </div>
+        </details>
+        <div class="card">
+          <div class="stepper"><span class="on">1</span><span>2</span><span>3</span><span>4</span></div>
+          <p class="lp-cta-hint">メールだけ・目安1分。役割を選んで始めましょう。</p>
+          <button id="go-inviter" class="btn-primary" type="button">先に登録して招待する</button>
+          <button id="go-invitee" class="btn-secondary" type="button">招待コードで参加する</button>
+          <button id="go-login" class="btn-secondary" type="button">ログイン</button>
+        </div>
       </div>
     </section>
 
