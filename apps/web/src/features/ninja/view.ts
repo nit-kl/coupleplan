@@ -121,3 +121,62 @@ export function flashNinjaCheer(message: string): void {
     cheer.hidden = true;
   }, 1600);
 }
+
+function pickReward(): string {
+  const rewards = ["肩もみ10分", "好きなスイーツ1つ", "朝ごはんリクエスト券", "30分の自由時間パス"];
+  return rewards[Math.floor(Math.random() * rewards.length)] ?? rewards[0]!;
+}
+
+export function showNinjaPublishModal(week: NinjaWeekView): void {
+  const modal = document.getElementById("ninja-publish-modal");
+  const message = document.getElementById("ninja-publish-modal-message");
+  const score = document.getElementById("ninja-publish-modal-score");
+  const reward = document.getElementById("ninja-publish-modal-reward");
+  const claimBtn = document.getElementById("ninja-claim-reward") as HTMLButtonElement | null;
+  if (!modal) return;
+
+  const partner = week.partnerPoints ?? 0;
+  const diff = week.myPoints - partner;
+  if (score) score.textContent = `あなた ${week.myPoints}pt / 相手 ${partner}pt`;
+
+  if (diff > 0) {
+    const rewardText = pickReward();
+    if (message) message.textContent = "勝利です！今週のご褒美を獲得できます。";
+    if (reward) {
+      reward.hidden = false;
+      reward.textContent = `獲得ご褒美: ${rewardText}`;
+    }
+    if (claimBtn) {
+      claimBtn.hidden = false;
+      claimBtn.dataset.rewardText = rewardText;
+    }
+  } else if (diff === 0) {
+    if (message) message.textContent = "引き分けです。今週はふたりともナイス連携！";
+    if (reward) {
+      reward.hidden = true;
+      reward.textContent = "";
+    }
+    if (claimBtn) {
+      claimBtn.hidden = true;
+      claimBtn.dataset.rewardText = "";
+    }
+  } else {
+    if (message) message.textContent = "今回は相手の勝利でした。次週リベンジしましょう。";
+    if (reward) {
+      reward.hidden = true;
+      reward.textContent = "";
+    }
+    if (claimBtn) {
+      claimBtn.hidden = true;
+      claimBtn.dataset.rewardText = "";
+    }
+  }
+
+  modal.hidden = false;
+}
+
+export function hideNinjaPublishModal(): void {
+  const modal = document.getElementById("ninja-publish-modal");
+  if (!modal) return;
+  modal.hidden = true;
+}

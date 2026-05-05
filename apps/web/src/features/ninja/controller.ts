@@ -8,7 +8,14 @@ import {
   resetNinjaWeek,
 } from "./api";
 import type { NinjaMissionCard } from "./types";
-import { flashNinjaCheer, renderNinjaMissions, renderNinjaWeek, showNinjaScreen } from "./view";
+import {
+  flashNinjaCheer,
+  hideNinjaPublishModal,
+  renderNinjaMissions,
+  renderNinjaWeek,
+  showNinjaPublishModal,
+  showNinjaScreen,
+} from "./view";
 
 function ensureToken(): string {
   const token = getAccessToken();
@@ -37,6 +44,7 @@ export function startNinjaController(): void {
 
   bindClick("go-ninja", async () => {
     try {
+      hideNinjaPublishModal();
       showNinjaScreen();
       await loadAll();
     } catch (e) {
@@ -45,6 +53,7 @@ export function startNinjaController(): void {
   });
 
   bindClick("ninja-back-home", () => {
+    hideNinjaPublishModal();
     document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
     document.getElementById("screen-home")?.classList.add("active");
     window.scrollTo(0, 0);
@@ -96,9 +105,28 @@ export function startNinjaController(): void {
       const week = await publishNinjaWeek(token);
       renderNinjaWeek(week);
       if (missionsCache.length > 0) renderNinjaMissions(missionsCache);
+      showNinjaPublishModal(week);
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     }
+  });
+
+  bindClick("ninja-close-modal", () => {
+    hideNinjaPublishModal();
+  });
+
+  bindClick("ninja-claim-reward", () => {
+    const claimBtn = document.getElementById("ninja-claim-reward") as HTMLButtonElement | null;
+    const rewardText = claimBtn?.dataset.rewardText || "今週のご褒美";
+    hideNinjaPublishModal();
+    flashNinjaCheer(`ご褒美を獲得しました: ${rewardText}`);
+  });
+
+  document.getElementById("ninja-publish-modal")?.addEventListener("click", (ev) => {
+    if (ev.target === ev.currentTarget) hideNinjaPublishModal();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") hideNinjaPublishModal();
   });
 
   bindClick("ninja-reset-week", async () => {
