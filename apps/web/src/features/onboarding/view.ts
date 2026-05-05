@@ -66,27 +66,47 @@ export function setPairHeadlines(mode: OnboardingMode): void {
   }
 }
 
+function setCoupleStatusStyle(el: HTMLElement, kind: "ok" | "warn" | "pending"): void {
+  el.classList.remove("portal-couple-ok", "portal-couple-warn", "portal-couple-pending");
+  el.classList.add(kind === "ok" ? "portal-couple-ok" : kind === "pending" ? "portal-couple-pending" : "portal-couple-warn");
+}
+
 export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeResponse | undefined): void {
-  const profile = document.getElementById("home-profile");
+  const nameEl = document.getElementById("home-user-name");
+  const emailEl = document.getElementById("home-user-email");
   const coupleStatus = document.getElementById("home-couple-status");
   const rouletteButton = document.getElementById("go-roulette") as HTMLButtonElement | null;
   const ninjaButton = document.getElementById("go-ninja") as HTMLButtonElement | null;
-  if (profile) {
-    profile.textContent = user
-      ? `${user.displayName}（${user.email}）でログイン中です。`
-      : "ログイン情報を取得できませんでした。";
+
+  if (nameEl) {
+    nameEl.textContent = user ? `${user.displayName} さん、ようこそ` : "ログイン情報を取得できませんでした";
   }
+  if (emailEl) {
+    if (user) {
+      emailEl.textContent = user.email;
+      emailEl.hidden = false;
+    } else {
+      emailEl.textContent = "";
+      emailEl.hidden = true;
+    }
+  }
+
   if (coupleStatus) {
     if (!couple) {
-      coupleStatus.textContent = "まだカップル連携は完了していません。LPに戻って登録フローから連携してください。";
+      coupleStatus.textContent =
+        "まだふたりのポータルが始まっていません。下の「はじめの画面」から登録・招待を続けてください。";
+      setCoupleStatusStyle(coupleStatus, "warn");
       if (rouletteButton) rouletteButton.hidden = true;
       if (ninjaButton) ninjaButton.hidden = true;
       return;
     }
-    coupleStatus.textContent =
-      couple.status === "active"
-        ? `カップル連携済みです（メンバー ${couple.members.length} 人）。`
-        : "カップルは作成済みですが、まだ相手の参加待ちです。";
+    if (couple.status === "active") {
+      coupleStatus.textContent = `ふたりでポータル利用中（メンバー ${couple.members.length}人）`;
+      setCoupleStatusStyle(coupleStatus, "ok");
+    } else {
+      coupleStatus.textContent = "相手の参加待ちです。招待コードを共有したまま、落ち着いて待てます。";
+      setCoupleStatusStyle(coupleStatus, "pending");
+    }
   }
   if (rouletteButton) {
     rouletteButton.hidden = !(couple && couple.status === "active");
