@@ -2,6 +2,7 @@ import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain
 import {
   Couple,
   Invite,
+  NinjaCustomMission,
   NinjaLog,
   NinjaWeeklySummary,
   OtpRequestRecord,
@@ -26,6 +27,7 @@ export class InMemoryRepository implements AppRepository {
   private rouletteSessions = new Map<string, RouletteSessionRow>();
   private rouletteVotes = new Map<string, RouletteVote>();
   private rouletteResults = new Map<string, RouletteResult>();
+  private ninjaCustomMissions = new Map<string, NinjaCustomMission>();
   private ninjaLogs = new Map<string, NinjaLog>();
   private ninjaWeeklySummaries = new Map<string, NinjaWeeklySummary>();
 
@@ -185,6 +187,9 @@ export class InMemoryRepository implements AppRepository {
       for (const [lid, log] of Array.from(this.ninjaLogs.entries())) {
         if (log.coupleId === couple.id) this.ninjaLogs.delete(lid);
       }
+      for (const [mid, mission] of Array.from(this.ninjaCustomMissions.entries())) {
+        if (mission.coupleId === couple.id) this.ninjaCustomMissions.delete(mid);
+      }
       for (const [sk, summary] of Array.from(this.ninjaWeeklySummaries.entries())) {
         if (summary.coupleId === couple.id) this.ninjaWeeklySummaries.delete(sk);
       }
@@ -222,7 +227,10 @@ export class InMemoryRepository implements AppRepository {
     // ローカルではログ過多を避けスキップ（必要なら console に出す）
   }
 
-  async getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession> {
+  async getOrCreateActiveRouletteSession(
+    coupleId: string,
+    deckPlanIds: string[],
+  ): Promise<RouletteSession> {
     const existing = Array.from(this.rouletteSessions.values()).find(
       (s) => s.coupleId === coupleId && !s.archivedAt,
     );
@@ -234,6 +242,7 @@ export class InMemoryRepository implements AppRepository {
       id: this.newId("rls"),
       coupleId,
       status: "collecting",
+      planIds: [...deckPlanIds],
       startedAt: this.nowIso(),
     };
     this.rouletteSessions.set(session.id, session);
@@ -304,6 +313,35 @@ export class InMemoryRepository implements AppRepository {
     return row ? { ...row } : null;
   }
 
+  async insertNinjaCustomMission(mission: NinjaCustomMission): Promise<void> {
+    this.ninjaCustomMissions.set(mission.id, { ...mission });
+  }
+
+  async listNinjaCustomMissions(coupleId: string): Promise<NinjaCustomMission[]> {
+    return Array.from(this.ninjaCustomMissions.values())
+      .filter((m) => m.coupleId === coupleId)
+      .map((m) => ({ ...m }));
+  }
+
+  async getNinjaCustomMissionById(
+    coupleId: string,
+    missionId: string,
+  ): Promise<NinjaCustomMission | null> {
+    const mission = this.ninjaCustomMissions.get(missionId);
+    if (!mission || mission.coupleId !== coupleId) return null;
+    return { ...mission };
+  }
+
+  async countNinjaCustomMissionsInRange(
+    coupleId: string,
+    startIso: string,
+    endIso: string,
+  ): Promise<number> {
+    return Array.from(this.ninjaCustomMissions.values()).filter(
+      (m) => m.coupleId === coupleId && m.createdAt >= startIso && m.createdAt < endIso,
+    ).length;
+  }
+
   async insertNinjaLog(log: NinjaLog): Promise<void> {
     this.ninjaLogs.set(log.id, { ...log });
   }
@@ -328,6 +366,10 @@ export class InMemoryRepository implements AppRepository {
 
   async upsertNinjaWeeklySummary(summary: NinjaWeeklySummary): Promise<void> {
     this.ninjaWeeklySummaries.set(`${summary.coupleId}\t${summary.weekStart}`, { ...summary });
+  }
+
+  async deleteNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<void> {
+    this.ninjaWeeklySummaries.delete(`${coupleId}\t${weekStart}`);
   }
 
   async listActiveCoupleIds(): Promise<string[]> {

@@ -3,6 +3,7 @@ import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain
 import type {
   Couple,
   Invite,
+  NinjaCustomMission,
   NinjaLog,
   NinjaWeeklySummary,
   OtpRequestRecord,
@@ -294,6 +295,7 @@ export class D1Repository implements AppRepository {
     if (couple) {
       await this.db.prepare(`DELETE FROM ninja_weekly_summaries WHERE couple_id = ?`).bind(couple.id).run();
       await this.db.prepare(`DELETE FROM ninja_logs WHERE couple_id = ?`).bind(couple.id).run();
+      await this.db.prepare(`DELETE FROM ninja_custom_missions WHERE couple_id = ?`).bind(couple.id).run();
 
       // ルーレット関連: results -> votes -> sessions の順で消すと外部キーの依存に沿う
       await this.db
@@ -340,10 +342,13 @@ export class D1Repository implements AppRepository {
       .run();
   }
 
-  async getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession> {
+  async getOrCreateActiveRouletteSession(
+    coupleId: string,
+    deckPlanIds: string[],
+  ): Promise<RouletteSession> {
     const existing = await this.db
       .prepare(
-        `SELECT id, couple_id AS coupleId, status, started_at AS startedAt, finished_at AS finishedAt
+        `SELECT id, couple_id AS coupleId, status, plan_ids AS planIds, started_at AS startedAt, finished_at AS finishedAt
            FROM roulette_sessions
           WHERE couple_id = ? AND archived_at IS NULL
           ORDER BY started_at DESC
@@ -354,14 +359,25 @@ export class D1Repository implements AppRepository {
         id: string;
         coupleId: string;
         status: RouletteSession["status"];
+        planIds: string | null;
         startedAt: string;
         finishedAt: string | null;
       }>();
     if (existing) {
+      const parsedPlanIds = JSON.parse(existing.planIds || "[]") as string[];
+      if (parsedPlanIds.length === 0) {
+        const fallback = [...deckPlanIds];
+        await this.db
+          .prepare(`UPDATE roulette_sessions SET plan_ids = ? WHERE id = ?`)
+          .bind(JSON.stringify(fallback), existing.id)
+          .run();
+        parsedPlanIds.push(...fallback);
+      }
       return {
         id: existing.id,
         coupleId: existing.coupleId,
         status: existing.status,
+        planIds: parsedPlanIds,
         startedAt: existing.startedAt,
         finishedAt: existing.finishedAt ?? undefined,
       };
@@ -370,13 +386,20 @@ export class D1Repository implements AppRepository {
       id: this.newId("rls"),
       coupleId,
       status: "collecting",
+      planIds: [...deckPlanIds],
       startedAt: this.nowIso(),
     };
     await this.db
       .prepare(
-        `INSERT INTO roulette_sessions (id, couple_id, status, started_at) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO roulette_sessions (id, couple_id, status, plan_ids, started_at) VALUES (?, ?, ?, ?, ?)`,
       )
-      .bind(session.id, session.coupleId, session.status, session.startedAt)
+      .bind(
+        session.id,
+        session.coupleId,
+        session.status,
+        JSON.stringify(session.planIds),
+        session.startedAt,
+      )
       .run();
     return session;
   }
@@ -384,7 +407,7 @@ export class D1Repository implements AppRepository {
   async getRouletteSessionById(sessionId: string): Promise<RouletteSession | null> {
     const row = await this.db
       .prepare(
-        `SELECT id, couple_id AS coupleId, status, started_at AS startedAt, finished_at AS finishedAt
+        `SELECT id, couple_id AS coupleId, status, plan_ids AS planIds, started_at AS startedAt, finished_at AS finishedAt
            FROM roulette_sessions
           WHERE id = ?`,
       )
@@ -393,6 +416,7 @@ export class D1Repository implements AppRepository {
         id: string;
         coupleId: string;
         status: RouletteSession["status"];
+        planIds: string | null;
         startedAt: string;
         finishedAt: string | null;
       }>();
@@ -401,6 +425,7 @@ export class D1Repository implements AppRepository {
       id: row.id,
       coupleId: row.coupleId,
       status: row.status,
+      planIds: JSON.parse(row.planIds || "[]") as string[],
       startedAt: row.startedAt,
       finishedAt: row.finishedAt ?? undefined,
     };
@@ -487,6 +512,73 @@ export class D1Repository implements AppRepository {
     return row ?? null;
   }
 
+  async insertNinjaCustomMission(mission: NinjaCustomMission): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO ninja_custom_missions
+          (id, couple_id, title, description, emoji, point, created_by_user_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        mission.id,
+        mission.coupleId,
+        mission.title,
+        mission.description,
+        mission.emoji,
+        mission.point,
+        mission.createdByUserId,
+        mission.createdAt,
+      )
+      .run();
+  }
+
+  async listNinjaCustomMissions(coupleId: string): Promise<NinjaCustomMission[]> {
+    const res = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, title, description, emoji, point,
+                created_by_user_id AS createdByUserId, created_at AS createdAt
+           FROM ninja_custom_missions
+          WHERE couple_id = ?
+          ORDER BY created_at ASC`,
+      )
+      .bind(coupleId)
+      .all<NinjaCustomMission>();
+    const list = (res as { results?: NinjaCustomMission[] }).results ?? [];
+    return list.map((r) => ({ ...r }));
+  }
+
+  async getNinjaCustomMissionById(
+    coupleId: string,
+    missionId: string,
+  ): Promise<NinjaCustomMission | null> {
+    const row = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, title, description, emoji, point,
+                created_by_user_id AS createdByUserId, created_at AS createdAt
+           FROM ninja_custom_missions
+          WHERE couple_id = ? AND id = ?`,
+      )
+      .bind(coupleId, missionId)
+      .first<NinjaCustomMission>();
+    return row ?? null;
+  }
+
+  async countNinjaCustomMissionsInRange(
+    coupleId: string,
+    startIso: string,
+    endIso: string,
+  ): Promise<number> {
+    const row = await this.db
+      .prepare(
+        `SELECT COUNT(*) AS n
+           FROM ninja_custom_missions
+          WHERE couple_id = ? AND created_at >= ? AND created_at < ?`,
+      )
+      .bind(coupleId, startIso, endIso)
+      .first<{ n: number }>();
+    return row?.n ?? 0;
+  }
+
   async insertNinjaLog(log: NinjaLog): Promise<void> {
     await this.db
       .prepare(
@@ -557,6 +649,13 @@ export class D1Repository implements AppRepository {
         summary.partnerPoints,
         summary.publishedAt,
       )
+      .run();
+  }
+
+  async deleteNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<void> {
+    await this.db
+      .prepare(`DELETE FROM ninja_weekly_summaries WHERE couple_id = ? AND week_start = ?`)
+      .bind(coupleId, weekStart)
       .run();
   }
 

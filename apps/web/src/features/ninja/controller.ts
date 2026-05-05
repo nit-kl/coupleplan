@@ -1,7 +1,21 @@
 import { getAccessToken } from "../../shared/session/sessionStore";
-import { getNinjaMissions, getNinjaWeek, postNinjaLog, publishNinjaWeek } from "./api";
+import {
+  getNinjaMissions,
+  getNinjaWeek,
+  postNinjaCustomMission,
+  postNinjaLog,
+  publishNinjaWeek,
+  resetNinjaWeek,
+} from "./api";
 import type { NinjaMissionCard } from "./types";
-import { renderNinjaMissions, renderNinjaWeek, showNinjaScreen } from "./view";
+import {
+  flashNinjaCheer,
+  hideNinjaPublishModal,
+  renderNinjaMissions,
+  renderNinjaWeek,
+  showNinjaPublishModal,
+  showNinjaScreen,
+} from "./view";
 
 function ensureToken(): string {
   const token = getAccessToken();
@@ -30,6 +44,7 @@ export function startNinjaController(): void {
 
   bindClick("go-ninja", async () => {
     try {
+      hideNinjaPublishModal();
       showNinjaScreen();
       await loadAll();
     } catch (e) {
@@ -38,6 +53,7 @@ export function startNinjaController(): void {
   });
 
   bindClick("ninja-back-home", () => {
+    hideNinjaPublishModal();
     document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
     document.getElementById("screen-home")?.classList.add("active");
     window.scrollTo(0, 0);
@@ -51,12 +67,75 @@ export function startNinjaController(): void {
     }
   });
 
+  bindClick("ninja-custom-add", async () => {
+    const titleInput = document.getElementById("ninja-custom-title") as HTMLInputElement | null;
+    const pointSelect = document.getElementById("ninja-custom-point") as HTMLSelectElement | null;
+    if (!titleInput || !pointSelect) return;
+    const rawTitle = titleInput.value.trim();
+    const pointNum = Number(pointSelect.value);
+    if (!rawTitle) {
+      alert("任務名を入力してください。");
+      titleInput.focus();
+      return;
+    }
+    if (pointNum !== 5 && pointNum !== 10) {
+      alert("ポイントは 5pt か 10pt を選択してください。");
+      pointSelect.focus();
+      return;
+    }
+    try {
+      const token = ensureToken();
+      const addBtn = document.getElementById("ninja-custom-add") as HTMLButtonElement | null;
+      if (addBtn) addBtn.disabled = true;
+      const created = await postNinjaCustomMission(token, { title: rawTitle, point: pointNum as 5 | 10 });
+      titleInput.value = "";
+      await loadAll();
+      flashNinjaCheer(`「${created.mission.title}」を追加しました（+${created.mission.point}pt）`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      const addBtn = document.getElementById("ninja-custom-add") as HTMLButtonElement | null;
+      if (addBtn) addBtn.disabled = false;
+    }
+  });
+
   bindClick("ninja-publish-week", async () => {
     try {
       const token = ensureToken();
       const week = await publishNinjaWeek(token);
       renderNinjaWeek(week);
       if (missionsCache.length > 0) renderNinjaMissions(missionsCache);
+      showNinjaPublishModal(week);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  bindClick("ninja-close-modal", () => {
+    hideNinjaPublishModal();
+  });
+
+  bindClick("ninja-claim-reward", () => {
+    const claimBtn = document.getElementById("ninja-claim-reward") as HTMLButtonElement | null;
+    const rewardText = claimBtn?.dataset.rewardText || "今週のご褒美";
+    hideNinjaPublishModal();
+    flashNinjaCheer(`ご褒美を獲得しました: ${rewardText}`);
+  });
+
+  document.getElementById("ninja-publish-modal")?.addEventListener("click", (ev) => {
+    if (ev.target === ev.currentTarget) hideNinjaPublishModal();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") hideNinjaPublishModal();
+  });
+
+  bindClick("ninja-reset-week", async () => {
+    try {
+      const token = ensureToken();
+      const week = await resetNinjaWeek(token);
+      renderNinjaWeek(week);
+      if (missionsCache.length > 0) renderNinjaMissions(missionsCache);
+      flashNinjaCheer("公開をリセットしました。記録はそのまま残っています。");
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     }
@@ -68,14 +147,19 @@ export function startNinjaController(): void {
     if (!btn) return;
     const missionId = btn.dataset.missionId;
     if (!missionId) return;
+    if (btn.disabled) return;
     try {
+      btn.disabled = true;
       const token = ensureToken();
-      await postNinjaLog(token, missionId);
+      const result = await postNinjaLog(token, missionId);
       const week = await getNinjaWeek(token);
       renderNinjaWeek(week);
       if (missionsCache.length > 0) renderNinjaMissions(missionsCache);
+      flashNinjaCheer(`+${result.log.point}pt「${result.log.title}」を記録しました`);
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      btn.disabled = false;
     }
   });
 }
