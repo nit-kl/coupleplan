@@ -273,7 +273,7 @@ paths:
   /ninja/missions:
     get:
       tags: [ninja]
-      summary: List ninja mission catalog (static)
+      summary: List ninja mission catalog (static + couple custom)
       security:
         - bearerAuth: []
       responses:
@@ -289,10 +289,37 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/NinjaMissionCard"
+        "412":
+          description: Active couple is required
+  /ninja/missions/custom:
+    post:
+      tags: [ninja]
+      summary: Create a couple-local custom mission with guardrails
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinjaCustomMissionCreateRequest"
+      responses:
+        "201":
+          description: Custom mission created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinjaCustomMissionCreateResponse"
+        "400":
+          description: Invalid payload or disallowed point
+        "409":
+          description: Weekly custom mission limit reached
+        "412":
+          description: Active couple is required
   /ninja/logs:
     post:
       tags: [ninja]
-      summary: Declare completion of a mission (points taken from server catalog)
+      summary: Declare completion of a mission (static or couple custom; points taken from server-side data)
       security:
         - bearerAuth: []
       requestBody:
@@ -345,6 +372,26 @@ paths:
       responses:
         "200":
           description: Updated weekly ninja view after publish
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinjaWeekView"
+        "412":
+          description: Active couple is required
+  /ninja/week/reset:
+    post:
+      tags: [ninja]
+      summary: Reset this couple's weekly publish state (unpublish only; logs remain)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinjaPublishWeekRequest"
+      responses:
+        "200":
+          description: Updated weekly ninja view after reset
           content:
             application/json:
               schema:
@@ -610,6 +657,32 @@ components:
       properties:
         missionId:
           type: string
+    NinjaCustomMissionCreateRequest:
+      type: object
+      required: [title, point]
+      properties:
+        title:
+          type: string
+          maxLength: 40
+        point:
+          type: integer
+          enum: [5, 10]
+        description:
+          type: string
+          maxLength: 120
+        emoji:
+          type: string
+          description: 任意。未指定時は既定値を適用
+    NinjaCustomMissionCreateResponse:
+      type: object
+      required: [mission, weeklyCreatedCount, weeklyCreateLimit]
+      properties:
+        mission:
+          $ref: "#/components/schemas/NinjaMissionCard"
+        weeklyCreatedCount:
+          type: integer
+        weeklyCreateLimit:
+          type: integer
     NinjaLogItem:
       type: object
       required: [id, missionId, title, point, createdAt]

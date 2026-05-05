@@ -240,8 +240,8 @@ export function createHonoApp(options: {
 
   app.get("/roulette/plans", async (c) => {
     try {
-      await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-      return c.json({ plans: rouletteUsecase.listPlans() }, 200);
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json({ plans: await rouletteUsecase.listPlans(user) }, 200);
     } catch (err) {
       return handleError(c, err);
     }
@@ -286,8 +286,18 @@ export function createHonoApp(options: {
 
   app.get("/ninja/missions", async (c) => {
     try {
-      await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-      return c.json({ missions: ninjaUsecase.listMissions() }, 200);
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json({ missions: await ninjaUsecase.listMissions(user) }, 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/ninja/missions/custom", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json();
+      return c.json(await ninjaUsecase.createCustomMission(user, body), 201);
     } catch (err) {
       return handleError(c, err);
     }
@@ -317,6 +327,16 @@ export function createHonoApp(options: {
       const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
       const body = await c.req.json().catch(() => ({}));
       return c.json(await ninjaUsecase.publishMyWeek(user, body), 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/ninja/week/reset", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json().catch(() => ({}));
+      return c.json(await ninjaUsecase.resetMyWeek(user, body), 200);
     } catch (err) {
       return handleError(c, err);
     }

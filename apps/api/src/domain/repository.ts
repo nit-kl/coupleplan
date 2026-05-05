@@ -1,6 +1,7 @@
 import type {
   Couple,
   Invite,
+  NinjaCustomMission,
   NinjaLog,
   NinjaWeeklySummary,
   OtpRequestRecord,
@@ -57,7 +58,7 @@ export interface AppRepository {
     detail: string | null,
   ): Promise<void>;
 
-  getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession>;
+  getOrCreateActiveRouletteSession(coupleId: string, deckPlanIds: string[]): Promise<RouletteSession>;
   getRouletteSessionById(sessionId: string): Promise<RouletteSession | null>;
   updateRouletteSessionStatus(
     sessionId: string,
@@ -72,9 +73,14 @@ export interface AppRepository {
   saveRouletteResult(result: RouletteResult): Promise<void>;
   getRouletteResultBySession(sessionId: string): Promise<RouletteResult | null>;
 
+  insertNinjaCustomMission(mission: NinjaCustomMission): Promise<void>;
+  listNinjaCustomMissions(coupleId: string): Promise<NinjaCustomMission[]>;
+  getNinjaCustomMissionById(coupleId: string, missionId: string): Promise<NinjaCustomMission | null>;
+  countNinjaCustomMissionsInRange(coupleId: string, startIso: string, endIso: string): Promise<number>;
   insertNinjaLog(log: NinjaLog): Promise<void>;
   listNinjaLogsInRange(coupleId: string, startIso: string, endIso: string): Promise<NinjaLog[]>;
   getNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<NinjaWeeklySummary | null>;
   upsertNinjaWeeklySummary(summary: NinjaWeeklySummary): Promise<void>;
+  deleteNinjaWeeklySummary(coupleId: string, weekStart: string): Promise<void>;
   listActiveCoupleIds(): Promise<string[]>;
 }

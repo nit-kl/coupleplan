@@ -6,8 +6,9 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TSX_CLI = join(REPO_ROOT, "node_modules", "tsx", "dist", "cli.mjs");
 const API_ENTRY = join(REPO_ROOT, "apps", "api", "src", "server.ts");
 
-const BASE_URL = (process.env.API_BASE_URL ?? "http://127.0.0.1:8787").replace(/\/$/, "");
 const USE_REMOTE = Boolean(process.env.API_BASE_URL);
+const LOCAL_PORT = Number(process.env.API_SMOKE_PORT ?? 18787);
+const BASE_URL = (process.env.API_BASE_URL ?? `http://127.0.0.1:${LOCAL_PORT}`).replace(/\/$/, "");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -96,7 +97,7 @@ async function run() {
     server = spawn(process.execPath, [TSX_CLI, API_ENTRY], {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
+      env: { ...process.env, PORT: String(LOCAL_PORT) },
     });
     server.stdout.on("data", (chunk) => process.stdout.write(`[api] ${chunk}`));
     server.stderr.on("data", (chunk) => process.stderr.write(`[api:err] ${chunk}`));
@@ -112,8 +113,9 @@ async function run() {
       assert(ready, "APIサーバーが起動しませんでした");
     }
 
-    const emailA = "partner-a@example.com";
-    const emailB = "partner-b@example.com";
+    const runId = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const emailA = `partner-a+${runId}@example.com`;
+    const emailB = `partner-b+${runId}@example.com`;
 
     const otpA = await request("/auth/otp/request", {
       method: "POST",
@@ -283,9 +285,28 @@ async function run() {
       method: "GET",
       headers: { Authorization: `Bearer ${tokenA}` },
     });
-    assert(ninjaMissions.status === 200, "ninja missions failed");
+    assert(
+      ninjaMissions.status === 200,
+      `ninja missions failed (status=${ninjaMissions.status}, code=${ninjaMissions.data?.code ?? "n/a"}, detail=${ninjaMissions.data?.detail ?? "n/a"})`,
+    );
     const missionId = ninjaMissions.data.missions?.[0]?.id;
     assert(missionId, "ninja mission id missing");
+
+    const customMission = await request("/ninja/missions/custom", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ title: "観葉植物に水やり", point: 5 }),
+    });
+    assert(customMission.status === 201, "create custom mission failed");
+    const customMissionId = customMission.data.mission?.id;
+    assert(customMissionId, "custom mission id missing");
+
+    const logCustom = await request("/ninja/logs", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({ missionId: customMissionId }),
+    });
+    assert(logCustom.status === 200, "ninja custom mission log failed");
 
     const logA = await request("/ninja/logs", {
       method: "POST",
@@ -319,9 +340,24 @@ async function run() {
       headers: { Authorization: `Bearer ${tokenB}` },
     });
     assert(weekBAfter.status === 200, "ninja week B after publish failed");
+    assert(weekBAfter.data.partnerPoints === declaredPoint + 5, "B should see A's total after publish");
+
+    const resetWeek = await request("/ninja/week/reset", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tokenA}` },
+      body: JSON.stringify({}),
+    });
+    assert(resetWeek.status === 200, "ninja week reset failed");
+    assert(resetWeek.data.partnerPoints === null, "reset should hide partner points again");
+
+    const weekBAfterReset = await request("/ninja/week", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenB}` },
+    });
+    assert(weekBAfterReset.status === 200, "ninja week B after reset failed");
     assert(
-      weekBAfter.data.partnerPoints === declaredPoint,
-      "B should see A's total after publish",
+      weekBAfterReset.data.partnerPoints === null,
+      "B should not see partner total after reset",
     );
 
     const deleteAccount = await request("/users/me", {

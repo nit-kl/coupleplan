@@ -16,6 +16,17 @@ export function showRouletteScreen(screen: RouletteScreen): void {
     el.classList.toggle("active", id === screen);
   }
   window.scrollTo(0, 0);
+
+  const spinWheel = document.querySelector("#screen-roulette-spin .rv-spin-wheel");
+  if (spinWheel instanceof HTMLElement) {
+    if (screen === "spin") {
+      spinWheel.classList.remove("rv-spin-animate");
+      void spinWheel.offsetWidth;
+      spinWheel.classList.add("rv-spin-animate");
+    } else {
+      spinWheel.classList.remove("rv-spin-animate");
+    }
+  }
 }
 
 export function hideAllRouletteScreens(): void {
@@ -31,23 +42,27 @@ export function renderPlanCard(plan: PlanCard | undefined): void {
   if (!stage) return;
   if (!plan) {
     stage.innerHTML = `
-      <div class="plan-card">
-        <span class="emoji" aria-hidden="true">✅</span>
-        <h2>すべて選び終えました</h2>
-        <p>送信ボタンで投票を確定してください。</p>
+      <div class="rv-deck">
+        <div class="rv-deck-card rv-deck-card--done">
+          <span class="rv-deck-emoji" aria-hidden="true">✅</span>
+          <h2 class="rv-deck-title">お疲れさま！</h2>
+          <p class="rv-deck-desc">すべてのプランを見終わりました。投票を送信してね。</p>
+        </div>
       </div>
     `;
     return;
   }
   stage.innerHTML = `
-    <div class="plan-card" data-plan-id="${escapeHtml(plan.id)}">
-      <span class="emoji" aria-hidden="true">${escapeHtml(plan.emoji)}</span>
-      <h2>${escapeHtml(plan.title)}</h2>
-      <p>${escapeHtml(plan.description)}</p>
-    </div>
-    <div class="vote-buttons">
-      <button type="button" class="btn-pass" id="btn-vote-pass">パス</button>
-      <button type="button" class="btn-like" id="btn-vote-like">いいね 💗</button>
+    <div class="rv-deck">
+      <div class="rv-deck-card" data-plan-id="${escapeHtml(plan.id)}">
+        <span class="rv-deck-emoji" aria-hidden="true">${escapeHtml(plan.emoji)}</span>
+        <h2 class="rv-deck-title">${escapeHtml(plan.title)}</h2>
+        <p class="rv-deck-desc">${escapeHtml(plan.description)}</p>
+      </div>
+      <div class="rv-vote-stack">
+        <button type="button" class="rv-btn-pass" id="btn-vote-pass">今回はパス</button>
+        <button type="button" class="rv-btn-like" id="btn-vote-like">いいね！ 💗</button>
+      </div>
     </div>
   `;
 }
@@ -56,22 +71,36 @@ export function renderSubmitStage(disabled: boolean): void {
   const stage = document.getElementById("roulette-card-stage");
   if (!stage) return;
   stage.innerHTML = `
-    <div class="plan-card">
-      <span class="emoji" aria-hidden="true">📨</span>
-      <h2>あなたの投票を送信</h2>
-      <p>送信したあとは相手の投票を待ちます。送信前ならカードを戻すこともできます。</p>
-    </div>
-    <div class="vote-buttons">
-      <button type="button" class="btn-pass" id="btn-vote-back">前のカードに戻る</button>
-      <button type="button" class="btn-like" id="btn-submit-votes" ${disabled ? "disabled" : ""}>投票を送信</button>
+    <div class="rv-deck">
+      <div class="rv-deck-card rv-deck-card--submit">
+        <span class="rv-deck-emoji" aria-hidden="true">📨</span>
+        <h2 class="rv-deck-title">この内容で送信する？</h2>
+        <p class="rv-deck-desc">送信したあとは相手の投票を待ちます。送信前なら、ひとつ前のカードに戻れます。</p>
+      </div>
+      <div class="rv-vote-stack">
+        <button type="button" class="rv-btn-pass" id="btn-vote-back">ひとつ前に戻る</button>
+        <button type="button" class="rv-btn-like" id="btn-submit-votes" ${disabled ? "disabled" : ""}>この内容で送信する</button>
+      </div>
     </div>
   `;
 }
 
 export function setSwipeProgress(current: number, total: number): void {
-  const el = document.getElementById("roulette-progress");
-  if (!el) return;
-  el.textContent = total === 0 ? "プランを読み込み中..." : `${Math.min(current, total)} / ${total}`;
+  const label = document.getElementById("roulette-progress");
+  const bar = document.getElementById("roulette-progress-bar");
+  const track = document.getElementById("roulette-progress-track");
+  const safeCurrent = total === 0 ? 0 : Math.min(current, total);
+  if (label) {
+    label.textContent = total === 0 ? "プランを読み込み中…" : `${safeCurrent} / ${total}`;
+  }
+  if (bar) {
+    const pct = total === 0 ? 0 : (safeCurrent / total) * 100;
+    bar.style.width = `${pct}%`;
+  }
+  if (track) {
+    track.setAttribute("aria-valuemax", String(Math.max(0, total)));
+    track.setAttribute("aria-valuenow", String(safeCurrent));
+  }
 }
 
 export function setSwipeStatus(text: string): void {
@@ -89,14 +118,14 @@ export function setWaitDetail(session: RouletteSessionView): void {
   if (!el) return;
   if (session.status === "collecting") {
     if (session.partners.me.completed && !session.partners.partner.completed) {
-      el.textContent = "あなたの投票は完了済みです。相手の選択を待っています。";
+      el.textContent = "あなたの投票は完了済みです。相手の選択が終わるまで、気長に待てます。";
       return;
     }
     if (!session.partners.me.completed) {
       el.textContent = "投票を最後まで進めてから送信してください。";
       return;
     }
-    el.textContent = "両者の投票は揃いましたが、3件以上の交差がありませんでした。やり直してみましょう。";
+    el.textContent = "今回は共通の「いいね」が見つかりませんでした。ラインナップを切り替えて、もう一度すり合わせてみましょう。";
     return;
   }
   el.textContent = "セッションを確認しています…";
@@ -107,7 +136,11 @@ export function setMatchList(plans: PlanCard[]): void {
   if (!list) return;
   list.innerHTML = plans
     .map(
-      (p) => `<li><strong>${escapeHtml(p.emoji)} ${escapeHtml(p.title)}</strong><br /><span style="color:var(--ink-soft)">${escapeHtml(p.description)}</span></li>`,
+      (p) => `<li class="rv-match-item" role="listitem">
+        <span class="rv-match-emoji" aria-hidden="true">${escapeHtml(p.emoji)}</span>
+        <strong class="rv-match-title">${escapeHtml(p.title)}</strong>
+        <span class="rv-match-desc">${escapeHtml(p.description)}</span>
+      </li>`,
     )
     .join("");
 }

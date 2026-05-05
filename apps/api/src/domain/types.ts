@@ -58,6 +58,7 @@ export type RouletteSession = {
   id: string;
   coupleId: string;
   status: RouletteSessionStatus;
+  planIds: string[];
   startedAt: string;
   finishedAt?: string;
 };
@@ -100,6 +101,17 @@ export type NinjaMissionCard = {
   title: string;
   description: string;
   point: number;
+};
+
+export type NinjaCustomMission = {
+  id: string;
+  coupleId: string;
+  title: string;
+  description: string;
+  emoji: string;
+  point: number;
+  createdByUserId: string;
+  createdAt: string;
 };
 
 export type NinjaLog = {
