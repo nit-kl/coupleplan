@@ -125,7 +125,7 @@ export function setWaitDetail(session: RouletteSessionView): void {
       el.textContent = "投票を最後まで進めてから送信してください。";
       return;
     }
-    el.textContent = "ふたりの「いいね」が3件以上かぶりませんでした。やり直して、もう一度すり合わせてみましょう。";
+    el.textContent = "今回は共通の「いいね」が見つかりませんでした。ラインナップを切り替えて、もう一度すり合わせてみましょう。";
     return;
   }
   el.textContent = "セッションを確認しています…";

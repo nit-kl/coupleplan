@@ -2,7 +2,7 @@
 
 ## ステータス
 
-承認済み
+置換（[0014](./0014-date-roulette-6deck-auto-redraw.md)）
 
 ## コンテキスト
 

@@ -57,7 +57,7 @@ export interface AppRepository {
     detail: string | null,
   ): Promise<void>;
 
-  getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession>;
+  getOrCreateActiveRouletteSession(coupleId: string, deckPlanIds: string[]): Promise<RouletteSession>;
   getRouletteSessionById(sessionId: string): Promise<RouletteSession | null>;
   updateRouletteSessionStatus(
     sessionId: string,

@@ -11,7 +11,8 @@ import type {
   User,
 } from "../domain/types";
 
-export const MATCH_THRESHOLD = 3;
+export const DECK_SIZE = 6;
+export const MATCH_THRESHOLD = 1;
 
 type CoupleSummary = { coupleId: string; partnerId: string };
 
@@ -41,6 +42,16 @@ function intersectLikedPlans(votes: RouletteVote[], userIds: string[]): string[]
   return matched.sort();
 }
 
+function pickDeckPlanIds(allPlanIds: string[], deckSize: number): string[] {
+  const size = Math.max(1, Math.min(deckSize, allPlanIds.length));
+  const pool = [...allPlanIds];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = pickRandomIndex(i + 1);
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  return pool.slice(0, size).sort();
+}
+
 export class RouletteUsecase {
   constructor(private readonly repo: AppRepository) {}
 
@@ -57,13 +68,23 @@ export class RouletteUsecase {
     return { coupleId: couple.id, partnerId };
   }
 
-  listPlans(): PlanCard[] {
-    return getPlanCatalog();
+  async listPlans(user: User): Promise<PlanCard[]> {
+    const { coupleId } = await this.ensureCoupleSummary(user);
+    const session = await this.repo.getOrCreateActiveRouletteSession(
+      coupleId,
+      pickDeckPlanIds(getPlanCatalog().map((p) => p.id), DECK_SIZE),
+    );
+    return session.planIds
+      .map((id) => findPlanById(id))
+      .filter((p): p is PlanCard => Boolean(p));
   }
 
   async getSessionView(user: User): Promise<RouletteSessionView> {
     const { coupleId, partnerId } = await this.ensureCoupleSummary(user);
-    const session = await this.repo.getOrCreateActiveRouletteSession(coupleId);
+    const session = await this.repo.getOrCreateActiveRouletteSession(
+      coupleId,
+      pickDeckPlanIds(getPlanCatalog().map((p) => p.id), DECK_SIZE),
+    );
     return this.buildView(user.id, partnerId, session);
   }
 
@@ -72,23 +93,28 @@ export class RouletteUsecase {
     rawVotes: unknown,
   ): Promise<RouletteSessionView> {
     const { coupleId, partnerId } = await this.ensureCoupleSummary(user);
-    const session = await this.repo.getOrCreateActiveRouletteSession(coupleId);
+    const session = await this.repo.getOrCreateActiveRouletteSession(
+      coupleId,
+      pickDeckPlanIds(getPlanCatalog().map((p) => p.id), DECK_SIZE),
+    );
 
     if (session.status === "decided") {
       throw new AppError(409, "session_decided", "session already decided");
     }
 
-    const items = this.normalizeVotePayload(rawVotes);
+    const items = this.normalizeVotePayload(rawVotes, new Set(session.planIds));
 
     await this.repo.upsertRouletteVotes(session.id, user.id, items);
-    await this.evaluateReadyTransition(session.id, partnerId, user.id);
-    const refreshed = await this.repo.getRouletteSessionById(session.id);
-    return this.buildView(user.id, partnerId, refreshed ?? session);
+    const resolved = await this.evaluateSessionAfterVote(session, partnerId, user.id);
+    return this.buildView(user.id, partnerId, resolved);
   }
 
   async spin(user: User): Promise<RouletteSessionView> {
     const { coupleId, partnerId } = await this.ensureCoupleSummary(user);
-    const session = await this.repo.getOrCreateActiveRouletteSession(coupleId);
+    const session = await this.repo.getOrCreateActiveRouletteSession(
+      coupleId,
+      pickDeckPlanIds(getPlanCatalog().map((p) => p.id), DECK_SIZE),
+    );
 
     if (session.status === "decided") {
       return this.buildView(user.id, partnerId, session);
@@ -119,13 +145,19 @@ export class RouletteUsecase {
 
   async restart(user: User): Promise<RouletteSessionView> {
     const { coupleId, partnerId } = await this.ensureCoupleSummary(user);
-    const session = await this.repo.getOrCreateActiveRouletteSession(coupleId);
+    const session = await this.repo.getOrCreateActiveRouletteSession(
+      coupleId,
+      pickDeckPlanIds(getPlanCatalog().map((p) => p.id), DECK_SIZE),
+    );
     await this.repo.archiveRouletteSession(session.id, this.repo.nowIso());
-    const next = await this.repo.getOrCreateActiveRouletteSession(coupleId);
+    const next = await this.repo.getOrCreateActiveRouletteSession(
+      coupleId,
+      pickDeckPlanIds(getPlanCatalog().map((p) => p.id), DECK_SIZE),
+    );
     return this.buildView(user.id, partnerId, next);
   }
 
-  private normalizeVotePayload(raw: unknown): RouletteVoteInput[] {
+  private normalizeVotePayload(raw: unknown, allowedPlanIds: Set<string>): RouletteVoteInput[] {
     if (!Array.isArray(raw) || raw.length === 0) {
       throw new AppError(400, "bad_request", "votes must be a non-empty array");
     }
@@ -146,6 +178,9 @@ export class RouletteUsecase {
       if (!findPlanById(planId)) {
         throw new AppError(400, "unknown_plan", `unknown plan: ${planId}`);
       }
+      if (!allowedPlanIds.has(planId)) {
+        throw new AppError(400, "bad_request", `plan is not in current deck: ${planId}`);
+      }
       if (seen.has(planId)) continue;
       seen.add(planId);
       items.push({ planId, vote: vote as RouletteVoteValue });
@@ -153,22 +188,31 @@ export class RouletteUsecase {
     return items;
   }
 
-  private async evaluateReadyTransition(
-    sessionId: string,
+  private async evaluateSessionAfterVote(
+    session: RouletteSession,
     partnerId: string,
     selfId: string,
-  ): Promise<void> {
-    const session = await this.repo.getRouletteSessionById(sessionId);
-    if (!session || session.status !== "collecting") return;
-    const totalPlans = getPlanCatalog().length;
-    const votes = await this.repo.listRouletteVotes(sessionId);
+  ): Promise<RouletteSession> {
+    if (session.status !== "collecting") return session;
+    const totalPlans = session.planIds.length;
+    const votes = await this.repo.listRouletteVotes(session.id);
     const meDone = votes.filter((v) => v.userId === selfId).length >= totalPlans;
     const partnerDone = votes.filter((v) => v.userId === partnerId).length >= totalPlans;
-    if (!meDone || !partnerDone) return;
+    if (!meDone || !partnerDone) {
+      return (await this.repo.getRouletteSessionById(session.id)) ?? session;
+    }
     const matched = intersectLikedPlans(votes, [selfId, partnerId]);
     if (matched.length >= MATCH_THRESHOLD) {
-      await this.repo.updateRouletteSessionStatus(sessionId, "ready", null);
+      await this.repo.updateRouletteSessionStatus(session.id, "ready", null);
+      return (
+        (await this.repo.getRouletteSessionById(session.id)) ?? { ...session, status: "ready" }
+      );
     }
+    await this.repo.archiveRouletteSession(session.id, this.repo.nowIso());
+    return this.repo.getOrCreateActiveRouletteSession(
+      session.coupleId,
+      pickDeckPlanIds(getPlanCatalog().map((p) => p.id), DECK_SIZE),
+    );
   }
 
   private async buildView(
@@ -176,7 +220,7 @@ export class RouletteUsecase {
     partnerId: string,
     session: RouletteSession,
   ): Promise<RouletteSessionView> {
-    const totalPlans = getPlanCatalog().length;
+    const totalPlans = session.planIds.length;
     const votes = await this.repo.listRouletteVotes(session.id);
     const myVotes = votes
       .filter((v) => v.userId === selfId)
@@ -185,7 +229,7 @@ export class RouletteUsecase {
     const matchedPlanIds =
       session.status === "collecting"
         ? []
-        : intersectLikedPlans(votes, [selfId, partnerId]);
+        : intersectLikedPlans(votes, [selfId, partnerId]).filter((id) => session.planIds.includes(id));
 
     const view: RouletteSessionView = {
       sessionId: session.id,

@@ -222,7 +222,10 @@ export class InMemoryRepository implements AppRepository {
     // ローカルではログ過多を避けスキップ（必要なら console に出す）
   }
 
-  async getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession> {
+  async getOrCreateActiveRouletteSession(
+    coupleId: string,
+    deckPlanIds: string[],
+  ): Promise<RouletteSession> {
     const existing = Array.from(this.rouletteSessions.values()).find(
       (s) => s.coupleId === coupleId && !s.archivedAt,
     );
@@ -234,6 +237,7 @@ export class InMemoryRepository implements AppRepository {
       id: this.newId("rls"),
       coupleId,
       status: "collecting",
+      planIds: [...deckPlanIds],
       startedAt: this.nowIso(),
     };
     this.rouletteSessions.set(session.id, session);

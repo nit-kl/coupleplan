@@ -55,10 +55,8 @@ export function startRouletteController(): void {
 
   async function loadAndRender(): Promise<void> {
     const token = ensureToken();
-    if (state.get().plans.length === 0) {
-      const { plans } = await getPlans(token);
-      state.setPlans(plans);
-    }
+    const { plans } = await getPlans(token);
+    state.setPlans(plans);
     const session = await getSession(token);
     state.setSession(session);
     routeByStatus(session);
@@ -148,7 +146,7 @@ export function startRouletteController(): void {
       setSwipeStatus("送信中… そのまま少し待ってね。");
       const session = await submitVotes(token, votes);
       state.setSession(session);
-      routeByStatus(session);
+      await loadAndRender();
     } catch (error) {
       showRouletteError(error);
     }

@@ -240,8 +240,8 @@ export function createHonoApp(options: {
 
   app.get("/roulette/plans", async (c) => {
     try {
-      await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-      return c.json({ plans: rouletteUsecase.listPlans() }, 200);
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json({ plans: await rouletteUsecase.listPlans(user) }, 200);
     } catch (err) {
       return handleError(c, err);
     }

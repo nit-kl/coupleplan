@@ -52,5 +52,6 @@
 - [0011-date-roulette-state.md](./0011-date-roulette-state.md)
 - [0012-silent-ninja-declarations.md](./0012-silent-ninja-declarations.md)
 - [0013-ninja-weekly-aggregation.md](./0013-ninja-weekly-aggregation.md)
+- [0014-date-roulette-6deck-auto-redraw.md](./0014-date-roulette-6deck-auto-redraw.md)
 
 引き続き、判断前に実装しないこと。

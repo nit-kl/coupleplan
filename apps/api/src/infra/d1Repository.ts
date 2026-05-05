@@ -340,10 +340,13 @@ export class D1Repository implements AppRepository {
       .run();
   }
 
-  async getOrCreateActiveRouletteSession(coupleId: string): Promise<RouletteSession> {
+  async getOrCreateActiveRouletteSession(
+    coupleId: string,
+    deckPlanIds: string[],
+  ): Promise<RouletteSession> {
     const existing = await this.db
       .prepare(
-        `SELECT id, couple_id AS coupleId, status, started_at AS startedAt, finished_at AS finishedAt
+        `SELECT id, couple_id AS coupleId, status, plan_ids AS planIds, started_at AS startedAt, finished_at AS finishedAt
            FROM roulette_sessions
           WHERE couple_id = ? AND archived_at IS NULL
           ORDER BY started_at DESC
@@ -354,14 +357,25 @@ export class D1Repository implements AppRepository {
         id: string;
         coupleId: string;
         status: RouletteSession["status"];
+        planIds: string | null;
         startedAt: string;
         finishedAt: string | null;
       }>();
     if (existing) {
+      const parsedPlanIds = JSON.parse(existing.planIds || "[]") as string[];
+      if (parsedPlanIds.length === 0) {
+        const fallback = [...deckPlanIds];
+        await this.db
+          .prepare(`UPDATE roulette_sessions SET plan_ids = ? WHERE id = ?`)
+          .bind(JSON.stringify(fallback), existing.id)
+          .run();
+        parsedPlanIds.push(...fallback);
+      }
       return {
         id: existing.id,
         coupleId: existing.coupleId,
         status: existing.status,
+        planIds: parsedPlanIds,
         startedAt: existing.startedAt,
         finishedAt: existing.finishedAt ?? undefined,
       };
@@ -370,13 +384,20 @@ export class D1Repository implements AppRepository {
       id: this.newId("rls"),
       coupleId,
       status: "collecting",
+      planIds: [...deckPlanIds],
       startedAt: this.nowIso(),
     };
     await this.db
       .prepare(
-        `INSERT INTO roulette_sessions (id, couple_id, status, started_at) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO roulette_sessions (id, couple_id, status, plan_ids, started_at) VALUES (?, ?, ?, ?, ?)`,
       )
-      .bind(session.id, session.coupleId, session.status, session.startedAt)
+      .bind(
+        session.id,
+        session.coupleId,
+        session.status,
+        JSON.stringify(session.planIds),
+        session.startedAt,
+      )
       .run();
     return session;
   }
@@ -384,7 +405,7 @@ export class D1Repository implements AppRepository {
   async getRouletteSessionById(sessionId: string): Promise<RouletteSession | null> {
     const row = await this.db
       .prepare(
-        `SELECT id, couple_id AS coupleId, status, started_at AS startedAt, finished_at AS finishedAt
+        `SELECT id, couple_id AS coupleId, status, plan_ids AS planIds, started_at AS startedAt, finished_at AS finishedAt
            FROM roulette_sessions
           WHERE id = ?`,
       )
@@ -393,6 +414,7 @@ export class D1Repository implements AppRepository {
         id: string;
         coupleId: string;
         status: RouletteSession["status"];
+        planIds: string | null;
         startedAt: string;
         finishedAt: string | null;
       }>();
@@ -401,6 +423,7 @@ export class D1Repository implements AppRepository {
       id: row.id,
       coupleId: row.coupleId,
       status: row.status,
+      planIds: JSON.parse(row.planIds || "[]") as string[],
       startedAt: row.startedAt,
       finishedAt: row.finishedAt ?? undefined,
     };

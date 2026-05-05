@@ -58,6 +58,7 @@ export type RouletteSession = {
   id: string;
   coupleId: string;
   status: RouletteSessionStatus;
+  planIds: string[];
   startedAt: string;
   finishedAt?: string;
 };
