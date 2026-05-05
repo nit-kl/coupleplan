@@ -136,6 +136,16 @@
       font-size: 1rem;
       font-family: inherit;
     }
+    .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.8rem;
+      font-size: 1rem;
+      font-family: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
 
     .invite-code {
       font-size: 1.3rem;
@@ -393,6 +403,17 @@
       display: grid;
       gap: 0.45rem;
       margin-top: 0.2rem;
+    }
+    .ninja-custom-grid {
+      display: grid;
+      grid-template-columns: 1fr 120px;
+      gap: 0.6rem;
+      align-items: end;
+    }
+    @media (max-width: 520px) {
+      .ninja-custom-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* LP (#screen-start) */
@@ -1318,6 +1339,24 @@
         <button id="ninja-reset-week" class="btn-secondary" type="button" hidden>公開をリセットする</button>
       </div>
       <p id="ninja-publish-hint"></p>
+      <div class="card">
+        <p class="hero-lead" style="font-size:0.9rem; margin-bottom:0.55rem;">ふたり専用の任務を追加</p>
+        <div class="ninja-custom-grid">
+          <div class="field" style="margin-bottom:0;">
+            <label for="ninja-custom-title">任務名</label>
+            <input id="ninja-custom-title" type="text" maxlength="40" placeholder="例: 観葉植物に水やり" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="ninja-custom-point">ポイント</label>
+            <select id="ninja-custom-point">
+              <option value="5">5pt</option>
+              <option value="10">10pt</option>
+            </select>
+          </div>
+        </div>
+        <button id="ninja-custom-add" class="btn-secondary" type="button">任務を追加</button>
+        <p class="hero-lead" style="font-size:0.82rem; margin:0.45rem 0 0;">※ 週3件まで追加できます</p>
+      </div>
       <div class="card">
         <p class="hero-lead" style="font-size:0.95rem; margin-bottom:0.75rem;">できたことをタップするだけ。内訳は相手に見えないから、気楽に続けられます。</p>
         <div id="ninja-mission-list" class="ninja-mission-grid"></div>

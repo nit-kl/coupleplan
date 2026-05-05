@@ -3,6 +3,7 @@ import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain
 import type {
   Couple,
   Invite,
+  NinjaCustomMission,
   NinjaLog,
   NinjaWeeklySummary,
   OtpRequestRecord,
@@ -294,6 +295,7 @@ export class D1Repository implements AppRepository {
     if (couple) {
       await this.db.prepare(`DELETE FROM ninja_weekly_summaries WHERE couple_id = ?`).bind(couple.id).run();
       await this.db.prepare(`DELETE FROM ninja_logs WHERE couple_id = ?`).bind(couple.id).run();
+      await this.db.prepare(`DELETE FROM ninja_custom_missions WHERE couple_id = ?`).bind(couple.id).run();
 
       // ルーレット関連: results -> votes -> sessions の順で消すと外部キーの依存に沿う
       await this.db
@@ -508,6 +510,73 @@ export class D1Repository implements AppRepository {
       .bind(sessionId)
       .first<{ id: string; sessionId: string; selectedPlanId: string; createdAt: string }>();
     return row ?? null;
+  }
+
+  async insertNinjaCustomMission(mission: NinjaCustomMission): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO ninja_custom_missions
+          (id, couple_id, title, description, emoji, point, created_by_user_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        mission.id,
+        mission.coupleId,
+        mission.title,
+        mission.description,
+        mission.emoji,
+        mission.point,
+        mission.createdByUserId,
+        mission.createdAt,
+      )
+      .run();
+  }
+
+  async listNinjaCustomMissions(coupleId: string): Promise<NinjaCustomMission[]> {
+    const res = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, title, description, emoji, point,
+                created_by_user_id AS createdByUserId, created_at AS createdAt
+           FROM ninja_custom_missions
+          WHERE couple_id = ?
+          ORDER BY created_at ASC`,
+      )
+      .bind(coupleId)
+      .all<NinjaCustomMission>();
+    const list = (res as { results?: NinjaCustomMission[] }).results ?? [];
+    return list.map((r) => ({ ...r }));
+  }
+
+  async getNinjaCustomMissionById(
+    coupleId: string,
+    missionId: string,
+  ): Promise<NinjaCustomMission | null> {
+    const row = await this.db
+      .prepare(
+        `SELECT id, couple_id AS coupleId, title, description, emoji, point,
+                created_by_user_id AS createdByUserId, created_at AS createdAt
+           FROM ninja_custom_missions
+          WHERE couple_id = ? AND id = ?`,
+      )
+      .bind(coupleId, missionId)
+      .first<NinjaCustomMission>();
+    return row ?? null;
+  }
+
+  async countNinjaCustomMissionsInRange(
+    coupleId: string,
+    startIso: string,
+    endIso: string,
+  ): Promise<number> {
+    const row = await this.db
+      .prepare(
+        `SELECT COUNT(*) AS n
+           FROM ninja_custom_missions
+          WHERE couple_id = ? AND created_at >= ? AND created_at < ?`,
+      )
+      .bind(coupleId, startIso, endIso)
+      .first<{ n: number }>();
+    return row?.n ?? 0;
   }
 
   async insertNinjaLog(log: NinjaLog): Promise<void> {

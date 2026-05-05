@@ -103,6 +103,17 @@ export type NinjaMissionCard = {
   point: number;
 };
 
+export type NinjaCustomMission = {
+  id: string;
+  coupleId: string;
+  title: string;
+  description: string;
+  emoji: string;
+  point: number;
+  createdByUserId: string;
+  createdAt: string;
+};
+
 export type NinjaLog = {
   id: string;
   coupleId: string;

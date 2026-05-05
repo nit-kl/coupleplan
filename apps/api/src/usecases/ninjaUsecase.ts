@@ -12,6 +12,8 @@ import type {
 import { jstDayOfWeekMon0, jstSundayYmdAfterMonday, jstWeekRangeContaining } from "../lib/jstWeek";
 
 type CouplePair = { coupleId: string };
+const CUSTOM_MISSION_ALLOWED_POINTS = new Set<number>([5, 10]);
+const CUSTOM_MISSION_WEEKLY_CREATE_LIMIT = 3;
 
 type JobEnv = {
   NINJA_PUBLISH_SECRET?: string;
@@ -80,8 +82,84 @@ export class NinjaUsecase {
     return { coupleId: couple.id };
   }
 
-  listMissions(): NinjaMissionCard[] {
-    return getNinjaMissionCatalog();
+  async listMissions(user: User): Promise<NinjaMissionCard[]> {
+    const { coupleId } = await this.ensureActiveCouple(user);
+    const catalog = getNinjaMissionCatalog();
+    const custom = await this.repo.listNinjaCustomMissions(coupleId);
+    const customCards: NinjaMissionCard[] = custom.map((m) => ({
+      id: m.id,
+      emoji: m.emoji,
+      title: m.title,
+      description: m.description,
+      point: m.point,
+    }));
+    return [...catalog, ...customCards];
+  }
+
+  async createCustomMission(
+    user: User,
+    raw: unknown,
+  ): Promise<{ mission: NinjaMissionCard; weeklyCreatedCount: number; weeklyCreateLimit: number }> {
+    const { coupleId } = await this.ensureActiveCouple(user);
+    const title =
+      typeof raw === "object" && raw !== null && "title" in raw ? (raw as { title: unknown }).title : undefined;
+    const point =
+      typeof raw === "object" && raw !== null && "point" in raw ? (raw as { point: unknown }).point : undefined;
+    const descriptionRaw =
+      typeof raw === "object" && raw !== null && "description" in raw
+        ? (raw as { description: unknown }).description
+        : undefined;
+    const emojiRaw =
+      typeof raw === "object" && raw !== null && "emoji" in raw ? (raw as { emoji: unknown }).emoji : undefined;
+
+    if (typeof title !== "string" || title.trim().length === 0) {
+      throw new AppError(400, "invalid_payload", "title is required");
+    }
+    if (typeof point !== "number" || !Number.isInteger(point)) {
+      throw new AppError(400, "invalid_payload", "point must be an integer");
+    }
+    if (!CUSTOM_MISSION_ALLOWED_POINTS.has(point)) {
+      throw new AppError(400, "invalid_point", "point must be one of allowed values");
+    }
+    const trimmedTitle = title.trim();
+    if (trimmedTitle.length > 40) {
+      throw new AppError(400, "invalid_payload", "title is too long");
+    }
+    const description =
+      typeof descriptionRaw === "string" && descriptionRaw.trim().length > 0
+        ? descriptionRaw.trim().slice(0, 120)
+        : "ふたり用のカスタム任務";
+    const emoji =
+      typeof emojiRaw === "string" && emojiRaw.trim().length > 0 ? emojiRaw.trim().slice(0, 8) : "🥷";
+
+    const { startIso, endIso } = jstWeekRangeContaining(new Date());
+    const weeklyCreatedCount = await this.repo.countNinjaCustomMissionsInRange(coupleId, startIso, endIso);
+    if (weeklyCreatedCount >= CUSTOM_MISSION_WEEKLY_CREATE_LIMIT) {
+      throw new AppError(409, "custom_mission_limit_reached", "weekly custom mission limit reached");
+    }
+
+    const mission = {
+      id: this.repo.newId("njc"),
+      coupleId,
+      title: trimmedTitle,
+      description,
+      emoji,
+      point,
+      createdByUserId: user.id,
+      createdAt: this.repo.nowIso(),
+    };
+    await this.repo.insertNinjaCustomMission(mission);
+    return {
+      mission: {
+        id: mission.id,
+        emoji: mission.emoji,
+        title: mission.title,
+        description: mission.description,
+        point: mission.point,
+      },
+      weeklyCreatedCount: weeklyCreatedCount + 1,
+      weeklyCreateLimit: CUSTOM_MISSION_WEEKLY_CREATE_LIMIT,
+    };
   }
 
   async declare(user: User, raw: unknown): Promise<{ log: NinjaLogItemView }> {
@@ -93,7 +171,11 @@ export class NinjaUsecase {
     if (typeof missionId !== "string" || missionId.length === 0) {
       throw new AppError(400, "invalid_payload", "missionId is required");
     }
-    const mission = findNinjaMissionById(missionId);
+    const staticMission = findNinjaMissionById(missionId);
+    const customMission = staticMission
+      ? null
+      : await this.repo.getNinjaCustomMissionById(coupleId, missionId);
+    const mission = staticMission ?? customMission;
     if (!mission) {
       throw new AppError(400, "unknown_mission", "unknown mission");
     }
@@ -174,7 +256,10 @@ export class NinjaUsecase {
     const myLogsRaw = allLogs.filter((l) => l.userId === user.id);
     const myPoints = myLogsRaw.reduce((sum, l) => sum + l.point, 0);
     const catalog = getNinjaMissionCatalog();
-    const titleById = new Map(catalog.map((m) => [m.id, m.title] as const));
+    const custom = await this.repo.listNinjaCustomMissions(coupleId);
+    const titleById = new Map(
+      [...catalog, ...custom.map((m) => ({ id: m.id, title: m.title }))].map((m) => [m.id, m.title] as const),
+    );
     const myLogs: NinjaLogItemView[] = myLogsRaw.map((l) => ({
       id: l.id,
       missionId: l.missionId,

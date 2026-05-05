@@ -2,6 +2,7 @@ import { getAccessToken } from "../../shared/session/sessionStore";
 import {
   getNinjaMissions,
   getNinjaWeek,
+  postNinjaCustomMission,
   postNinjaLog,
   publishNinjaWeek,
   resetNinjaWeek,
@@ -54,6 +55,38 @@ export function startNinjaController(): void {
       await loadAll();
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  bindClick("ninja-custom-add", async () => {
+    const titleInput = document.getElementById("ninja-custom-title") as HTMLInputElement | null;
+    const pointSelect = document.getElementById("ninja-custom-point") as HTMLSelectElement | null;
+    if (!titleInput || !pointSelect) return;
+    const rawTitle = titleInput.value.trim();
+    const pointNum = Number(pointSelect.value);
+    if (!rawTitle) {
+      alert("任務名を入力してください。");
+      titleInput.focus();
+      return;
+    }
+    if (pointNum !== 5 && pointNum !== 10) {
+      alert("ポイントは 5pt か 10pt を選択してください。");
+      pointSelect.focus();
+      return;
+    }
+    try {
+      const token = ensureToken();
+      const addBtn = document.getElementById("ninja-custom-add") as HTMLButtonElement | null;
+      if (addBtn) addBtn.disabled = true;
+      const created = await postNinjaCustomMission(token, { title: rawTitle, point: pointNum as 5 | 10 });
+      titleInput.value = "";
+      await loadAll();
+      flashNinjaCheer(`「${created.mission.title}」を追加しました（+${created.mission.point}pt）`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      const addBtn = document.getElementById("ninja-custom-add") as HTMLButtonElement | null;
+      if (addBtn) addBtn.disabled = false;
     }
   });
 

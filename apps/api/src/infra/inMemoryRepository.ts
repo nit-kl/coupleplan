@@ -2,6 +2,7 @@ import type { AppRepository, AuthAuditEvent, RouletteVoteInput } from "../domain
 import {
   Couple,
   Invite,
+  NinjaCustomMission,
   NinjaLog,
   NinjaWeeklySummary,
   OtpRequestRecord,
@@ -26,6 +27,7 @@ export class InMemoryRepository implements AppRepository {
   private rouletteSessions = new Map<string, RouletteSessionRow>();
   private rouletteVotes = new Map<string, RouletteVote>();
   private rouletteResults = new Map<string, RouletteResult>();
+  private ninjaCustomMissions = new Map<string, NinjaCustomMission>();
   private ninjaLogs = new Map<string, NinjaLog>();
   private ninjaWeeklySummaries = new Map<string, NinjaWeeklySummary>();
 
@@ -185,6 +187,9 @@ export class InMemoryRepository implements AppRepository {
       for (const [lid, log] of Array.from(this.ninjaLogs.entries())) {
         if (log.coupleId === couple.id) this.ninjaLogs.delete(lid);
       }
+      for (const [mid, mission] of Array.from(this.ninjaCustomMissions.entries())) {
+        if (mission.coupleId === couple.id) this.ninjaCustomMissions.delete(mid);
+      }
       for (const [sk, summary] of Array.from(this.ninjaWeeklySummaries.entries())) {
         if (summary.coupleId === couple.id) this.ninjaWeeklySummaries.delete(sk);
       }
@@ -306,6 +311,35 @@ export class InMemoryRepository implements AppRepository {
   async getRouletteResultBySession(sessionId: string): Promise<RouletteResult | null> {
     const row = this.rouletteResults.get(sessionId);
     return row ? { ...row } : null;
+  }
+
+  async insertNinjaCustomMission(mission: NinjaCustomMission): Promise<void> {
+    this.ninjaCustomMissions.set(mission.id, { ...mission });
+  }
+
+  async listNinjaCustomMissions(coupleId: string): Promise<NinjaCustomMission[]> {
+    return Array.from(this.ninjaCustomMissions.values())
+      .filter((m) => m.coupleId === coupleId)
+      .map((m) => ({ ...m }));
+  }
+
+  async getNinjaCustomMissionById(
+    coupleId: string,
+    missionId: string,
+  ): Promise<NinjaCustomMission | null> {
+    const mission = this.ninjaCustomMissions.get(missionId);
+    if (!mission || mission.coupleId !== coupleId) return null;
+    return { ...mission };
+  }
+
+  async countNinjaCustomMissionsInRange(
+    coupleId: string,
+    startIso: string,
+    endIso: string,
+  ): Promise<number> {
+    return Array.from(this.ninjaCustomMissions.values()).filter(
+      (m) => m.coupleId === coupleId && m.createdAt >= startIso && m.createdAt < endIso,
+    ).length;
   }
 
   async insertNinjaLog(log: NinjaLog): Promise<void> {

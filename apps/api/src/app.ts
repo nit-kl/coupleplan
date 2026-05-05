@@ -286,8 +286,18 @@ export function createHonoApp(options: {
 
   app.get("/ninja/missions", async (c) => {
     try {
-      await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
-      return c.json({ missions: ninjaUsecase.listMissions() }, 200);
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      return c.json({ missions: await ninjaUsecase.listMissions(user) }, 200);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  });
+
+  app.post("/ninja/missions/custom", async (c) => {
+    try {
+      const user = await authUsecase.resolveUserFromAuthHeader(c.req.header("authorization"));
+      const body = await c.req.json();
+      return c.json(await ninjaUsecase.createCustomMission(user, body), 201);
     } catch (err) {
       return handleError(c, err);
     }

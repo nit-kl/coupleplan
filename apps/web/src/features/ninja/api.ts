@@ -5,6 +5,13 @@ export function getNinjaMissions(accessToken: string): Promise<{ missions: Ninja
   return requestJson<{ missions: NinjaMissionCard[] }>("/ninja/missions", "GET", { accessToken });
 }
 
+export function postNinjaCustomMission(
+  accessToken: string,
+  payload: { title: string; point: 5 | 10 },
+): Promise<{ mission: NinjaMissionCard; weeklyCreatedCount: number; weeklyCreateLimit: number }> {
+  return requestJson("/ninja/missions/custom", "POST", { accessToken, body: payload });
+}
+
 export function getNinjaWeek(accessToken: string): Promise<NinjaWeekView> {
   return requestJson<NinjaWeekView>("/ninja/week", "GET", { accessToken });
 }
