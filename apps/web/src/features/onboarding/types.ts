@@ -1,4 +1,13 @@
-export const screenIds = ["start", "profile", "login", "pair", "done", "home"] as const;
+export const screenIds = [
+  "start",
+  "profile",
+  "login",
+  "post-register",
+  "pair",
+  "done",
+  "home",
+  "couple-gate",
+] as const;
 
 export type ScreenId = (typeof screenIds)[number];
 
