@@ -55,5 +55,6 @@
 - [0014-date-roulette-6deck-auto-redraw.md](./0014-date-roulette-6deck-auto-redraw.md)
 - [0015-ninja-weekly-unpublish-reset.md](./0015-ninja-weekly-unpublish-reset.md)
 - [0016-ninja-custom-missions-with-guardrails.md](./0016-ninja-custom-missions-with-guardrails.md)
+- [0017-solo-user-feature-scope.md](./0017-solo-user-feature-scope.md)
 
 引き続き、判断前に実装しないこと。

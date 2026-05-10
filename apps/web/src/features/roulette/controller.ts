@@ -1,3 +1,5 @@
+import { getMyCoupleOptional, isFullyPairedCouple } from "../onboarding/coupleEligibility";
+import { showCoupleGate } from "../onboarding/view";
 import { getAccessToken } from "../../shared/session/sessionStore";
 import {
   getPlans,
@@ -26,11 +28,7 @@ const HOME_SCREEN_ID = "screen-home";
 
 function showHomeScreen(): void {
   hideAllRouletteScreens();
-  document.getElementById("screen-ninja")?.classList.remove("active");
-  for (const id of ["start", "profile", "login", "pair", "done"]) {
-    const el = document.getElementById(`screen-${id}`);
-    if (el) el.classList.remove("active");
-  }
+  document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
   const home = document.getElementById(HOME_SCREEN_ID);
   if (home) home.classList.add("active");
   window.scrollTo(0, 0);
@@ -195,6 +193,12 @@ export function startRouletteController(): void {
 
   bindClick("go-roulette", async () => {
     try {
+      const token = ensureToken();
+      const couple = await getMyCoupleOptional(token);
+      if (!isFullyPairedCouple(couple)) {
+        showCoupleGate("roulette");
+        return;
+      }
       await loadAndRender();
     } catch (error) {
       showRouletteError(error);
