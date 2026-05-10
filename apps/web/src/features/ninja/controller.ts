@@ -1,3 +1,5 @@
+import { getMyCoupleOptional, isFullyPairedCouple } from "../onboarding/coupleEligibility";
+import { showCoupleGate } from "../onboarding/view";
 import { getAccessToken } from "../../shared/session/sessionStore";
 import {
   getNinjaMissions,
@@ -44,6 +46,12 @@ export function startNinjaController(): void {
 
   bindClick("go-ninja", async () => {
     try {
+      const token = ensureToken();
+      const couple = await getMyCoupleOptional(token);
+      if (!isFullyPairedCouple(couple)) {
+        showCoupleGate("ninja");
+        return;
+      }
       hideNinjaPublishModal();
       showNinjaScreen();
       await loadAll();

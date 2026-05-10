@@ -1,4 +1,5 @@
 import { HttpError } from "../../shared/api/httpClient";
+import { trackFunnel } from "../../shared/analytics/funnel";
 import {
   acceptInvite,
   createCouple,
@@ -27,6 +28,39 @@ import {
 } from "./view";
 import type { OnboardingMode } from "./types";
 
+const ONBOARDING_MODE_KEY = "cp_onboarding_mode";
+
+function persistMode(mode: OnboardingMode): void {
+  try {
+    sessionStorage.setItem(ONBOARDING_MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+}
+
+function readStoredMode(): OnboardingMode | undefined {
+  try {
+    const v = sessionStorage.getItem(ONBOARDING_MODE_KEY);
+    if (v === "inviter" || v === "invitee") return v;
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+}
+
+function restoreModeFromStorage(state: ReturnType<typeof createOnboardingState>): void {
+  const stored = readStoredMode();
+  if (stored) state.setMode(stored);
+}
+
+function clearStoredMode(): void {
+  try {
+    sessionStorage.removeItem(ONBOARDING_MODE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 function isAlreadyInCoupleError(error: unknown): boolean {
   if (error instanceof HttpError) {
     return error.message.includes("already in couple");
@@ -44,6 +78,7 @@ function isUnauthorizedError(error: unknown): boolean {
 
 function goToProfile(state: ReturnType<typeof createOnboardingState>, mode: OnboardingMode): void {
   state.setMode(mode);
+  persistMode(mode);
   setProfileModeHint(mode);
   showScreen("profile");
 }
@@ -52,7 +87,9 @@ async function sendOtpForCurrentEmail(
   state: ReturnType<typeof createOnboardingState>,
   email: string,
 ): Promise<void> {
+  trackFunnel("otp_send_click", { context: "profile" });
   await requestOtp(email);
+  trackFunnel("otp_request_ok", { context: "profile" });
   state.setOtpRequestedEmail(email);
   alert("認証コードを送信しました。メールの6桁コードを入力して進んでください。");
 }
@@ -67,6 +104,7 @@ async function verifySessionWithManualOtp(
     throw new Error("先に「認証コードを送信」を押してください（メール変更後は再送が必要です）。");
   }
   const verified = await verifyOtp(email, otpCode);
+  trackFunnel("otp_verify_success", { context: "profile" });
   state.setAccessToken(verified.accessToken);
   state.setUser(verified.user);
 }
@@ -85,6 +123,7 @@ async function refreshHome(state: ReturnType<typeof createOnboardingState>): Pro
   if (!accessToken) {
     throw new Error("ログイン情報がありません。もう一度ログインしてください。");
   }
+  restoreModeFromStorage(state);
   const [user, couple] = await Promise.all([getMe(accessToken), loadCoupleOptional(accessToken)]);
   state.setUser(user);
   state.setCouple(couple);
@@ -92,41 +131,32 @@ async function refreshHome(state: ReturnType<typeof createOnboardingState>): Pro
   showScreen("home");
 }
 
-/** 招待側: カップル作成 + 招待コード発行 */
-async function initializeSessionInviter(state: ReturnType<typeof createOnboardingState>): Promise<void> {
+/** メール認証〜表示名まで（カップル作成はしない） */
+async function completeRegistrationOnly(state: ReturnType<typeof createOnboardingState>): Promise<void> {
   const email = valueOf("email");
   const displayName = valueOf("display-name");
   if (!email || !displayName) {
     throw new Error("メールアドレスと表示名を入力してください");
   }
   await verifySessionWithManualOtp(state, email);
-
   const user = await updateProfile(state.get().accessToken, displayName);
   state.setUser(user);
+}
 
+/** 招待側: カップル作成〜招待コード発行〜ペア画面へ */
+async function startInviterPairing(state: ReturnType<typeof createOnboardingState>): Promise<void> {
   try {
     await createCouple(state.get().accessToken);
   } catch (error) {
     if (!isAlreadyInCoupleError(error)) throw error;
   }
-
   const invite = await issueInvite(state.get().accessToken);
   state.setInviteCode(invite.code);
-  setInviteCode(state.get().inviteCode);
+  setInviteCode(invite.code);
   state.setCouple(await getMyCouple(state.get().accessToken));
-}
-
-/** 被招待側: プロフィールまで（カップル未作成） */
-async function initializeSessionInvitee(state: ReturnType<typeof createOnboardingState>): Promise<void> {
-  const email = valueOf("email");
-  const displayName = valueOf("display-name");
-  if (!email || !displayName) {
-    throw new Error("メールアドレスと表示名を入力してください");
-  }
-  await verifySessionWithManualOtp(state, email);
-
-  const user = await updateProfile(state.get().accessToken, displayName);
-  state.setUser(user);
+  applyPairMode("inviter");
+  setPairHeadlines("inviter");
+  showScreen("pair");
 }
 
 export function startOnboardingController(): void {
@@ -137,7 +167,7 @@ export function startOnboardingController(): void {
   onClick("go-login", () => showScreen("login"));
   onClick("back-start", () => showScreen("start"));
   onClick("back-login-start", () => showScreen("start"));
-  onClick("back-profile", () => showScreen("profile"));
+  onClick("back-post-register-profile", () => showScreen("profile"));
   onClick("go-home", async () => {
     try {
       await refreshHome(state);
@@ -152,6 +182,7 @@ export function startOnboardingController(): void {
       const refreshed = await refreshSession();
       state.setAccessToken(refreshed.accessToken);
       state.setUser(refreshed.user);
+      restoreModeFromStorage(state);
       await refreshHome(state);
     } catch (error) {
       if (isUnauthorizedError(error)) {
@@ -162,20 +193,98 @@ export function startOnboardingController(): void {
     }
   })();
 
-  onClick("go-pair", async () => {
+  /** プロフィール: 登録完了 → 次に「連携 or ホーム」を選ぶ画面へ */
+  onClick("profile-complete-register", async () => {
     try {
-      const mode = state.get().mode;
-      if (mode === "inviter") {
-        await initializeSessionInviter(state);
-      } else {
-        await initializeSessionInvitee(state);
-      }
-      applyPairMode(mode);
-      setPairHeadlines(mode);
-      showScreen("pair");
+      await completeRegistrationOnly(state);
+      showScreen("post-register");
     } catch (error) {
       showError(error);
     }
+  });
+
+  /** 登録直後: カップル連携フローへ */
+  onClick("post-register-go-pair", async () => {
+    try {
+      restoreModeFromStorage(state);
+      const mode = state.get().mode;
+      if (mode === "inviter") {
+        await startInviterPairing(state);
+      } else {
+        applyPairMode("invitee");
+        setPairHeadlines("invitee");
+        showScreen("pair");
+      }
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  /** 登録直後: 先にポータル（ホーム）へ */
+  onClick("post-register-go-home", async () => {
+    try {
+      await refreshHome(state);
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  /** ホーム・機能ゲートからペア連携（未連携・参加待ちのとき） */
+  async function openPairingFlowFromPortal(): Promise<void> {
+    const accessToken = state.get().accessToken;
+    if (!accessToken) {
+      throw new Error("ログインが必要です。");
+    }
+    restoreModeFromStorage(state);
+    const mode = state.get().mode;
+    let couple = state.get().couple ?? (await loadCoupleOptional(accessToken));
+    state.setCouple(couple);
+
+    if (!couple) {
+      if (mode === "inviter") {
+        await startInviterPairing(state);
+      } else {
+        applyPairMode("invitee");
+        setPairHeadlines("invitee");
+        showScreen("pair");
+      }
+      return;
+    }
+
+    if (couple.status === "pending") {
+      applyPairMode(mode);
+      setPairHeadlines(mode);
+      if (mode === "inviter") {
+        const invite = await issueInvite(accessToken);
+        state.setInviteCode(invite.code);
+        setInviteCode(invite.code);
+      }
+      showScreen("pair");
+    }
+  }
+
+  onClick("home-open-pair", async () => {
+    try {
+      await openPairingFlowFromPortal();
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  onClick("couple-gate-open-pair", async () => {
+    try {
+      await openPairingFlowFromPortal();
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  onClick("couple-gate-back", () => {
+    showScreen("home");
+  });
+
+  onClick("couple-gate-dismiss", () => {
+    showScreen("home");
   });
 
   onClick("btn-send-otp", async () => {
@@ -196,7 +305,9 @@ export function startOnboardingController(): void {
       if (!email) {
         throw new Error("メールアドレスを入力してください");
       }
+      trackFunnel("otp_send_click", { context: "login" });
       await requestOtp(email);
+      trackFunnel("otp_request_ok", { context: "login" });
       state.setOtpRequestedEmail(email);
       alert("認証コードを送信しました。メールの6桁コードを入力してください。");
     } catch (error) {
@@ -215,8 +326,10 @@ export function startOnboardingController(): void {
         throw new Error("先に「認証コードを送信」を押してください（メール変更後は再送が必要です）。");
       }
       const verified = await verifyOtp(email, otpCode);
+      trackFunnel("otp_verify_success", { context: "login" });
       state.setAccessToken(verified.accessToken);
       state.setUser(verified.user);
+      restoreModeFromStorage(state);
       await refreshHome(state);
     } catch (error) {
       showError(error);
@@ -228,7 +341,7 @@ export function startOnboardingController(): void {
       if (state.get().mode !== "inviter") return;
       const invite = await issueInvite(state.get().accessToken);
       state.setInviteCode(invite.code);
-      setInviteCode(state.get().inviteCode);
+      setInviteCode(invite.code);
       alert("招待コードを再発行しました。");
     } catch (error) {
       showError(error);
@@ -236,17 +349,21 @@ export function startOnboardingController(): void {
   });
 
   onClick("copy-invite-code", async () => {
-    const code =
-      state.get().inviteCode ||
-      ((document.getElementById("invite-code") as HTMLDivElement | null)?.textContent?.trim() ?? "");
-    if (!code || code === "CP----") {
-      showError(new Error("コピーできるコードがありません"));
-      return;
-    }
     try {
+      const code =
+        state.get().inviteCode ||
+        ((document.getElementById("invite-code") as HTMLDivElement | null)?.textContent?.trim() ?? "");
+      if (!code || code === "CP----") {
+        showError(new Error("コピーできるコードがありません"));
+        return;
+      }
       await navigator.clipboard.writeText(code);
       alert("招待コードをコピーしました。");
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("コピーできる")) {
+        showError(error);
+        return;
+      }
       showError(new Error("コピーに失敗しました（ブラウザの許可を確認）"));
     }
   });
@@ -256,6 +373,7 @@ export function startOnboardingController(): void {
       if (state.get().mode !== "inviter") return;
       const me = await getMyCouple(state.get().accessToken);
       if (me.status === "active" && me.members.length >= 2) {
+        state.setCouple(me);
         showScreen("done");
         return;
       }
@@ -283,6 +401,14 @@ export function startOnboardingController(): void {
     }
   });
 
+  onClick("back-pair-home", async () => {
+    try {
+      await refreshHome(state);
+    } catch (error) {
+      showError(error);
+    }
+  });
+
   onClick("btn-withdraw", async () => {
     try {
       const accessToken = state.get().accessToken;
@@ -296,6 +422,7 @@ export function startOnboardingController(): void {
       await deleteMe(accessToken);
       await logoutSession().catch(() => undefined);
       state.resetSession();
+      clearStoredMode();
       setInviteCode("");
       setInputValue("otp-code", "");
       setInputValue("login-otp-code", "");

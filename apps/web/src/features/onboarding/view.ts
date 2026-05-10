@@ -1,6 +1,9 @@
+import { ensureAppRoute } from "../../shell/router";
 import { screenIds, type CoupleMeResponse, type OnboardingMode, type ScreenId, type UserProfile } from "./types";
+import { trackCoupleActiveOnce } from "../../shared/analytics/funnel";
 
 export function showScreen(screen: ScreenId): void {
+  ensureAppRoute();
   screenIds.forEach((id) => {
     const element = document.getElementById(`screen-${id}`);
     if (!element) return;
@@ -36,6 +39,29 @@ export function showError(error: unknown): void {
   alert(message);
 }
 
+export function showCoupleGate(kind: "roulette" | "ninja"): void {
+  const title = document.getElementById("couple-gate-title");
+  const lead = document.getElementById("couple-gate-lead");
+  const visual = document.getElementById("couple-gate-visual");
+  if (visual) {
+    visual.textContent = kind === "roulette" ? "🎲" : "🥷";
+  }
+  if (kind === "roulette") {
+    if (title) title.textContent = "デートルーレットは「ふたり」から";
+    if (lead) {
+      lead.textContent =
+        "スワイプや抽選は、パートナーとカップル連携したあとに楽しめます。まずは招待コードでつなぎましょう。";
+    }
+  } else {
+    if (title) title.textContent = "サイレント・ニンジャは「ふたり」から";
+    if (lead) {
+      lead.textContent =
+        "任務の申告や週の集計は、パートナーと連携したカップル向けです。連携後にまた開いてください。";
+    }
+  }
+  showScreen("couple-gate");
+}
+
 export function applyPairMode(mode: OnboardingMode): void {
   const inviter = document.getElementById("block-inviter");
   const invitee = document.getElementById("block-invitee");
@@ -48,7 +74,7 @@ export function setProfileModeHint(mode: OnboardingMode): void {
   if (!el) return;
   el.textContent =
     mode === "inviter"
-      ? "先に登録し、相手に招待コードを送ります（LINE・メール等で共有）。"
+      ? "先に登録し、相手に招待コードを送ります（LINE・メール等で共有）。ふたりがつながるまで、デートルーレット／ニンジャはお預けです。"
       : "あとから参加します。相手が送った CP- 形式のコードを手元に用意してください。";
 }
 
@@ -77,6 +103,10 @@ export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeRe
   const coupleStatus = document.getElementById("home-couple-status");
   const rouletteButton = document.getElementById("go-roulette") as HTMLButtonElement | null;
   const ninjaButton = document.getElementById("go-ninja") as HTMLButtonElement | null;
+  const pairCta = document.getElementById("home-open-pair") as HTMLButtonElement | null;
+
+  const fullyPaired =
+    couple !== undefined && couple.status === "active" && couple.members.length >= 2;
 
   if (nameEl) {
     nameEl.textContent = user ? `${user.displayName} さん、ようこそ` : "ログイン情報を取得できませんでした";
@@ -94,24 +124,29 @@ export function setHomeSummary(user: UserProfile | undefined, couple: CoupleMeRe
   if (coupleStatus) {
     if (!couple) {
       coupleStatus.textContent =
-        "まだふたりのポータルが始まっていません。下の「はじめの画面」から登録・招待を続けてください。";
+        "まだカップルと連携していません。下のボタンから招待コードの発行や入力ができます。";
       setCoupleStatusStyle(coupleStatus, "warn");
-      if (rouletteButton) rouletteButton.hidden = true;
-      if (ninjaButton) ninjaButton.hidden = true;
-      return;
-    }
-    if (couple.status === "active") {
+    } else if (fullyPaired) {
       coupleStatus.textContent = `ふたりでポータル利用中（メンバー ${couple.members.length}人）`;
       setCoupleStatusStyle(coupleStatus, "ok");
+      trackCoupleActiveOnce();
+    } else if (couple.status === "active") {
+      coupleStatus.textContent = "カップル情報を確認しています…";
+      setCoupleStatusStyle(coupleStatus, "pending");
     } else {
-      coupleStatus.textContent = "相手の参加待ちです。招待コードを共有したまま、落ち着いて待てます。";
+      coupleStatus.textContent =
+        "相手の参加待ちです。招待コードを共有したまま待つか、下のボタンで画面を開き直せます。";
       setCoupleStatusStyle(coupleStatus, "pending");
     }
   }
+
   if (rouletteButton) {
-    rouletteButton.hidden = !(couple && couple.status === "active");
+    rouletteButton.hidden = false;
   }
   if (ninjaButton) {
-    ninjaButton.hidden = !(couple && couple.status === "active");
+    ninjaButton.hidden = false;
+  }
+  if (pairCta) {
+    pairCta.hidden = fullyPaired;
   }
 }

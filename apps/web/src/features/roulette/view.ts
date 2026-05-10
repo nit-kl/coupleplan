@@ -1,8 +1,10 @@
 import type { PlanCard, RouletteResultView, RouletteScreen, RouletteSessionView } from "./types";
+import { screenIds } from "../onboarding/types";
 
 const SCREEN_IDS: RouletteScreen[] = ["swipe", "wait", "match", "spin", "result"];
 
-const NON_ROULETTE_SCREEN_IDS = ["start", "profile", "login", "pair", "done", "home"];
+/** ランディング（lp）を含め、ルーレット以外の `#screen-*` を非表示にする */
+const NON_ROULETTE_SCREEN_IDS = [...screenIds, "lp"] as const;
 
 export function showRouletteScreen(screen: RouletteScreen): void {
   document.getElementById("screen-ninja")?.classList.remove("active");
